@@ -395,8 +395,10 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         public Hashtable GetOptions(string name)
         {
             Hashtable options = new Hashtable();
-            foreach (OrderState state in OrderState.GetAllOrderStates())
+            foreach (OrderState state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(OrderType.Order))
             {
+                if (state.IsDeleted)
+                    continue;
                 options.Add(state.Id, state.Name);
             }
             options.Add("", "Leave unchanged");
