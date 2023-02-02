@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.Providers.SqlProvider;
+using Dynamicweb.Ecommerce.Orders;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
-using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.Providers.SqlProvider;
-using Dynamicweb.Ecommerce.Orders;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
-    class OrderSourceReader : SqlSourceReader
+    internal class OrderSourceReader : SqlSourceReader
     {
         private static MappingConditionalCollection _ordersConditions = null;
         private static List<string> _ordersToExport = null;
@@ -232,7 +232,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         private static void ClearOrderCache(IEnumerable<string> orderIds)
         {
             OrderService os = new OrderService();
-            foreach(string id in orderIds)
+            foreach (string id in orderIds)
             {
                 os.RemoveOrderCache(id);
             }

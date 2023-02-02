@@ -1,21 +1,21 @@
-﻿using System;
+﻿using Dynamicweb.Data;
+using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.Integration.Interfaces;
+using Dynamicweb.DataIntegration.ProviderHelpers;
+using Dynamicweb.DataIntegration.Providers.DynamicwebProvider;
+using Dynamicweb.Ecommerce.Orders;
+using Dynamicweb.Extensibility.AddIns;
+using Dynamicweb.Extensibility.Editors;
+using Dynamicweb.Logging;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
-using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.Extensibility.Editors;
-using Dynamicweb.Extensibility.AddIns;
-using Dynamicweb.Ecommerce.Orders;
-using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.ProviderHelpers;
-using Dynamicweb.DataIntegration.Providers.DynamicwebProvider;
-using Dynamicweb.Data;
-using System.Linq;
-using Dynamicweb.Logging;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
@@ -118,7 +118,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         public override bool RemoveMissingAfterImport { get; set; }
         #endregion
 
-        internal override SqlConnection Connection
+        protected override SqlConnection Connection
         {
             get { return connection ?? (connection = (SqlConnection)Database.CreateConnection()); }
             set { connection = value; }
@@ -504,7 +504,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         {
             if (RemoveMissingOrderLines)
             {
-                DynamicwebBulkInsertDestinationWriter writer = writers.FirstOrDefault(w => string.Compare(w.mapping?.DestinationTable?.Name, "EcomOrderLines", true) == 0);
+                DynamicwebBulkInsertDestinationWriter writer = writers.FirstOrDefault(w => string.Compare(w.Mapping?.DestinationTable?.Name, "EcomOrderLines", true) == 0);
                 if (writer != null && writer.RowsToWriteCount > 0 && writer.SqlCommand != null)
                 {
                     string tempTableName = $"EcomOrderLinesTempTableForBulkImport{writer.Mapping.GetId()}";
