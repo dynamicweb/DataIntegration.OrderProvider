@@ -33,90 +33,11 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         [AddInParameter("Export completed orders only"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
         public virtual bool DoNotExportCarts { get; set; }
 
-        [AddInParameter("Order state after export"), AddInParameterEditor(typeof(DropDownParameterEditor), "NewGUI=true;none=false;SortBy=Key;"), AddInParameterGroup("Source")]
+        [AddInParameter("Order state after export"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false;SortBy=Key;"), AddInParameterGroup("Source")]
         public virtual string OrderStateAfterExport { get; set; }
 
         [AddInParameter("Remove missing order lines"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Destination")]
         public bool RemoveMissingOrderLines { get; set; }
-
-
-        #region Hide Properties in the UI section
-
-        [AddInParameter("Source server"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string SourceServer
-        {
-            get { return Server; }
-            set { Server = value; }
-        }
-        [AddInParameter("Destination server"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string DestinationServer
-        {
-            get { return Server; }
-            set { Server = value; }
-        }
-        [AddInParameter("Use integrated security to connect to source server"), AddInParameterEditor(typeof(YesNoParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override bool SourceServerSSPI
-        {
-            get;
-            set;
-        }
-        [AddInParameter("Use integrated security to connect to destination server"), AddInParameterEditor(typeof(YesNoParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override bool DestinationServerSSPI
-        {
-            get;
-            set;
-        }
-        [AddInParameter("Sql source server username"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string SourceUsername
-        {
-            get { return Username; }
-            set { Username = value; }
-        }
-        [AddInParameter("Sql destination server username"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string DestinationUsername
-        {
-            get { return Username; }
-            set { Username = value; }
-        }
-        [AddInParameter("Sql source server password"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string SourcePassword
-        {
-            get { return Password; }
-            set { Password = value; }
-        }
-        [AddInParameter("Sql destination server password"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string DestinationPassword
-        {
-            get { return Password; }
-            set { Password = value; }
-        }
-        [AddInParameter("Sql source database"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string SourceDatabase
-        {
-            get { return Catalog; }
-            set { Catalog = value; }
-        }
-        [AddInParameter("Sql source connection string"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string SourceConnectionString
-        {
-            get { return ManualConnectionString; }
-            set { ManualConnectionString = value; }
-        }
-        [AddInParameter("Sql destination connection string"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string DestinationConnectionString
-        {
-            get { return ManualConnectionString; }
-            set { ManualConnectionString = value; }
-        }
-        [AddInParameter("Sql destination server password"), AddInParameterEditor(typeof(TextParameterEditor), "htmlClass=connectionStringInput;"), AddInParameterGroup("hidden")]
-        public override string DestinationDatabase
-        {
-            get { return Catalog; }
-            set { Catalog = value; }
-        }
-        [AddInParameter("Remove missing rows after import"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("hidden")]
-        public override bool RemoveMissingAfterImport { get; set; }
-        #endregion
 
         protected override SqlConnection Connection
         {
