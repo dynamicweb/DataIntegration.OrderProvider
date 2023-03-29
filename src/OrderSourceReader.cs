@@ -1,10 +1,10 @@
-﻿using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.Providers.SqlProvider;
-using Dynamicweb.Ecommerce.Orders;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.Providers.SqlProvider;
+using Dynamicweb.Ecommerce.Orders;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
@@ -12,10 +12,12 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
     {
         private static MappingConditionalCollection _ordersConditions = null;
         private static List<string> _ordersToExport = null;
+        private ColumnMappingCollection _columnMappings = null;
 
         public OrderSourceReader(Mapping mapping, SqlConnection connection, bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts)
         {
             base.mapping = mapping;
+            _columnMappings = mapping.GetColumnMappings();
             _command = new SqlCommand { Connection = connection };
             if (connection.State.ToString() != "Open")
                 connection.Open();
@@ -44,7 +46,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         {
             try
             {
-                if (mapping.GetColumnMappings().Count == 0)
+                if (_columnMappings.Count == 0)
                     return;
 
                 string sql = "select " + GetColumns() + " from  " + GetFromTables();
@@ -173,7 +175,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     _ordersToExport.Add(orderId);
                 }
             }
-            return mapping.GetColumnMappings().Where(columnMapping => columnMapping.SourceColumn != null).GroupBy(cm => cm.SourceColumn.Name, (key, group) => group.First()).ToDictionary(columnMapping => columnMapping.SourceColumn.Name, columnMapping => _reader[columnMapping.SourceColumn.Name]);
+            return _columnMappings.Where(columnMapping => columnMapping.SourceColumn != null).GroupBy(cm => cm.SourceColumn.Name, (key, group) => group.First()).ToDictionary(columnMapping => columnMapping.SourceColumn.Name, columnMapping => _reader[columnMapping.SourceColumn.Name]);
         }
 
         public static void UpdateExportedOrdersInDb(string orderStateIDAfterExport, SqlConnection connection)
@@ -232,7 +234,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         private static void ClearOrderCache(IEnumerable<string> orderIds)
         {
             OrderService os = new OrderService();
-            foreach (string id in orderIds)
+            foreach(string id in orderIds)
             {
                 os.RemoveOrderCache(id);
             }

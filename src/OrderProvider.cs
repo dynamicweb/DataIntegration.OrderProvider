@@ -1,21 +1,21 @@
-﻿using Dynamicweb.Data;
-using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.DataIntegration.ProviderHelpers;
-using Dynamicweb.DataIntegration.Providers.DynamicwebProvider;
-using Dynamicweb.Ecommerce.Orders;
-using Dynamicweb.Extensibility.AddIns;
-using Dynamicweb.Extensibility.Editors;
-using Dynamicweb.Logging;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
-using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
+using Dynamicweb.DataIntegration.Integration.Interfaces;
+using Dynamicweb.Extensibility.Editors;
+using Dynamicweb.Extensibility.AddIns;
+using Dynamicweb.Ecommerce.Orders;
+using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.ProviderHelpers;
+using Dynamicweb.DataIntegration.Providers.DynamicwebProvider;
+using Dynamicweb.Data;
+using System.Linq;
+using Dynamicweb.Logging;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
@@ -258,13 +258,14 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     {
                         Logger.Log("Starting import to temporary table for " + mapping.DestinationTable.Name + ".");
                         using (var reader = job.Source.GetReader(mapping))
-                        {
+                        {                            
                             var writer = new DynamicwebBulkInsertDestinationWriter(mapping, Connection, false, false, Logger, null, DiscardDuplicates, false, SkipFailingRows);
+                            var columnMappings = mapping.GetColumnMappings();
                             while (!reader.IsDone())
                             {
                                 sourceRow = reader.GetNext();
                                 ProcessInputRow(mapping, sourceRow);
-                                ProcessRow(mapping, sourceRow);
+                                ProcessRow(mapping, columnMappings, sourceRow);
                                 writer.Write(sourceRow);
                             }
                             writer.FinishWriting();
@@ -331,20 +332,24 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         private void AddMappingsToJobThatNeedsToBeThereForMoveToMainTables(Job job)
         {
             Mapping mapping = job.Mappings.Find(m => m.DestinationTable.Name == "EcomOrders");
-            if (mapping != null && mapping.GetColumnMappings().Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0) != null)
+            if (mapping != null)
             {
-                var OrderCustomerAccessUserIdMapping = mapping.GetColumnMappings().Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
-                if (OrderCustomerAccessUserIdMapping == null)
+                var columnMappings = mapping.GetColumnMappings();
+                if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0) != null)
                 {
-                    Column randomColumn = new Column(Guid.NewGuid().ToString(), typeof(string), mapping.SourceTable, false, true);
-                    SourceColumnNameForDestinationOrderCustomerAccessUserId = randomColumn.Name;
-                    mapping.AddMapping(randomColumn, job.Destination.GetSchema().GetTables().Find(t => t.Name == "EcomOrders").Columns.Find(c => string.Compare(c.Name, "OrderCustomerAccessUserId", true) == 0), true);
-                }
-                else
-                {
-                    if (OrderCustomerAccessUserIdMapping.SourceColumn != null)
+                    var OrderCustomerAccessUserIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
+                    if (OrderCustomerAccessUserIdMapping == null)
                     {
-                        SourceColumnNameForDestinationOrderCustomerAccessUserId = OrderCustomerAccessUserIdMapping.SourceColumn.Name;
+                        Column randomColumn = new Column(Guid.NewGuid().ToString(), typeof(string), mapping.SourceTable, false, true);
+                        SourceColumnNameForDestinationOrderCustomerAccessUserId = randomColumn.Name;
+                        mapping.AddMapping(randomColumn, job.Destination.GetSchema().GetTables().Find(t => t.Name == "EcomOrders").Columns.Find(c => string.Compare(c.Name, "OrderCustomerAccessUserId", true) == 0), true);
+                    }
+                    else
+                    {
+                        if (OrderCustomerAccessUserIdMapping.SourceColumn != null)
+                        {
+                            SourceColumnNameForDestinationOrderCustomerAccessUserId = OrderCustomerAccessUserIdMapping.SourceColumn.Name;
+                        }
                     }
                 }
             }
@@ -393,12 +398,12 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             }
         }
 
-        private void ProcessRow(Mapping mapping, Dictionary<string, object> row)
+        private void ProcessRow(Mapping mapping, ColumnMappingCollection columnMappings, Dictionary<string, object> row)
         {
             if (mapping != null && mapping.DestinationTable != null && mapping.DestinationTable.Name == "EcomOrders" && !string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
             {
                 object accessUserId = DBNull.Value;
-                var OrderCustomerAccessUserExternalIdMapping = mapping.GetColumnMappings().Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0);
+                var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0);
                 if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
                 {
                     if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
