@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.Providers.SqlProvider;
+using Dynamicweb.Ecommerce.Orders;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
-using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.Providers.SqlProvider;
-using Dynamicweb.Ecommerce.Orders;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
@@ -87,45 +87,14 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 
         private string GetWhereSql(bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts)
         {
-            string conditionalsSql = string.Empty;
-            int conditionalCount = 0;
-            foreach (MappingConditional conditional in mapping.Conditionals)
+            List<SqlParameter> parameters = new List<SqlParameter>();
+            string conditionalsSql = MappingExtensions.GetConditionalsSql(out parameters, mapping.Conditionals, false, false);
+            if (conditionalsSql != "")
             {
-                if (conditional.ConditionalOperator == ConditionalOperator.In)
-                {
-                    var conditionalValue = conditional.Condition;
-                    if (!string.IsNullOrEmpty(conditionalValue))
-                    {
-                        if (conditional.SourceColumn.Type == typeof(string))
-                        {
-                            conditionalValue = string.Join(",", conditionalValue.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries).Select(val => $"'{val}'"));
-                        }
-                    }
-                    conditionalsSql = conditionalsSql + "[" + conditional.SourceColumn.Name + "] " + MappingConditional.ConditionalOperatorSqlValue(conditional.ConditionalOperator) + " (" + conditionalValue + ") and ";
-                    continue;
-                }
-                else if (conditional.ConditionalOperator != ConditionalOperator.Contains)
-                {
-                    conditionalsSql = conditionalsSql + "[" + conditional.SourceColumn.Name + "] " + MappingConditional.ConditionalOperatorSqlValue(conditional.ConditionalOperator) + " @conditional" + conditionalCount + " and ";
-                }
-                else if (!string.IsNullOrEmpty(conditional.Condition))
-                {
-                    conditionalsSql = conditionalsSql + "[" + conditional.SourceColumn.Name + "] " + MappingConditional.ConditionalOperatorSqlValue(conditional.ConditionalOperator) + " '%" + conditional.Condition + "%' and ";
-                    continue;
-                }
-                if (conditional.SourceColumn.Type == typeof(DateTime))
-                {
-                    _command.Parameters.AddWithValue("@conditional" + conditionalCount, DateTime.Parse(conditional.Condition));
-                }
-                else
-                {
-                    _command.Parameters.AddWithValue("@conditional" + conditionalCount, conditional.Condition);
-                }
-                conditionalCount++;
-            }
-
-            if (!string.IsNullOrEmpty(conditionalsSql))
                 conditionalsSql = conditionalsSql.Substring(0, conditionalsSql.Length - 4);
+                foreach (SqlParameter p in parameters)
+                    _command.Parameters.Add(p);
+            }
 
             if (exportNotExportedOrders)
             {
@@ -234,7 +203,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         private static void ClearOrderCache(IEnumerable<string> orderIds)
         {
             OrderService os = new OrderService();
-            foreach(string id in orderIds)
+            foreach (string id in orderIds)
             {
                 os.RemoveOrderCache(id);
             }

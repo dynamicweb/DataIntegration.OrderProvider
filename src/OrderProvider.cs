@@ -1,21 +1,21 @@
-﻿using System;
+﻿using Dynamicweb.Data;
+using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.Integration.Interfaces;
+using Dynamicweb.DataIntegration.ProviderHelpers;
+using Dynamicweb.DataIntegration.Providers.DynamicwebProvider;
+using Dynamicweb.Ecommerce.Orders;
+using Dynamicweb.Extensibility.AddIns;
+using Dynamicweb.Extensibility.Editors;
+using Dynamicweb.Logging;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
-using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.Extensibility.Editors;
-using Dynamicweb.Extensibility.AddIns;
-using Dynamicweb.Ecommerce.Orders;
-using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.ProviderHelpers;
-using Dynamicweb.DataIntegration.Providers.DynamicwebProvider;
-using Dynamicweb.Data;
-using System.Linq;
-using Dynamicweb.Logging;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
@@ -258,7 +258,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     {
                         Logger.Log("Starting import to temporary table for " + mapping.DestinationTable.Name + ".");
                         using (var reader = job.Source.GetReader(mapping))
-                        {                            
+                        {
                             var writer = new DynamicwebBulkInsertDestinationWriter(mapping, Connection, false, false, Logger, null, DiscardDuplicates, false, SkipFailingRows);
                             var columnMappings = mapping.GetColumnMappings();
                             while (!reader.IsDone())
@@ -321,7 +321,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             {
                 if (state.IsDeleted)
                     continue;
-                options.Add(state.Id, state.Name);
+                options.Add(state.Id, state.GetName(Ecommerce.Services.Languages.GetDefaultLanguageId()));
             }
             options.Add("", "Leave unchanged");
             return options;
