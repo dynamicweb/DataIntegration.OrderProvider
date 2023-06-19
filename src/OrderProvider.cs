@@ -129,29 +129,46 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                         Schema = new Schema(node);
                         break;
                     case "ExportNotYetExportedOrders":
-                        ExportNotExportedOrders = node.FirstChild.Value == "True";
+                        if (node.HasChildNodes)
+                        {
+                            ExportNotExportedOrders = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "ExportOnlyOrdersWithoutExtID":
-                        ExportOnlyOrdersWithoutExtID = node.FirstChild.Value == "True";
+                        if (node.HasChildNodes)
+                        {
+                            ExportOnlyOrdersWithoutExtID = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "DoNotExportCarts":
-                        DoNotExportCarts = node.FirstChild.Value == "True";
+                        if (node.HasChildNodes)
+                        {
+                            DoNotExportCarts = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "OrderStateAfterExport":
                         if (node.HasChildNodes)
+                        {
                             OrderStateAfterExport = node.FirstChild.Value;
+                        }
                         break;
                     case "DiscardDuplicates":
                         if (node.HasChildNodes)
+                        {
                             DiscardDuplicates = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "RemoveMissingOrderLines":
                         if (node.HasChildNodes)
+                        {
                             RemoveMissingOrderLines = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "SkipFailingRows":
                         if (node.HasChildNodes)
+                        {
                             SkipFailingRows = node.FirstChild.Value == "True";
+                        }
                         break;
                 }
             }
