@@ -20,7 +20,7 @@ using System.Xml.Linq;
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
     [AddInName("Dynamicweb.DataIntegration.Providers.Provider"), AddInLabel("Order Provider"), AddInDescription("Order provider"), AddInIgnore(false)]
-    public class OrderProvider : SqlProvider.SqlProvider, ISource, IDestination, IDropDownOptions
+    public class OrderProvider : SqlProvider.SqlProvider, ISource, IDestination, IParameterOptions
     {
         private Job job = null;
 
@@ -33,7 +33,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         [AddInParameter("Export completed orders only"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
         public virtual bool DoNotExportCarts { get; set; }
 
-        [AddInParameter("Order state after export"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false;SortBy=Key;"), AddInParameterGroup("Source")]
+        [AddInParameter("Order state after export"), AddInParameterEditor(typeof(GroupedDropDownParameterEditor), "none=true;noneText=Leave unchanged;"), AddInParameterGroup("Source")]
         public virtual string OrderStateAfterExport { get; set; }
 
         [AddInParameter("Remove missing order lines"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Destination")]
@@ -331,17 +331,20 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             return true;
         }
 
-        public Hashtable GetOptions(string name)
+        IEnumerable<ParameterOption> IParameterOptions.GetParameterOptions(string parameterName)
         {
-            Hashtable options = new Hashtable();
-            foreach (OrderState state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(OrderType.Order))
+            var result = new List<ParameterOption>();
+
+            foreach (OrderState state in Ecommerce.Services.OrderStates.GetStatesByOrderType(OrderType.Order))
             {
                 if (state.IsDeleted)
                     continue;
-                options.Add(state.Id, state.GetName(Ecommerce.Services.Languages.GetDefaultLanguageId()));
+                string name = state.GetName(Ecommerce.Services.Languages.GetDefaultLanguageId());
+                string group = Ecommerce.Services.OrderFlows.GetFlowById(state.OrderFlowId)?.Name;
+                var value = new GroupedDropDownParameterEditor.DropDownItem(name, group, state.Id);
+                result.Add(new(name, value) { Group = group });
             }
-            options.Add("", "Leave unchanged");
-            return options;
+            return result;
         }
 
         private string SourceColumnNameForDestinationOrderCustomerAccessUserId = string.Empty;
