@@ -156,7 +156,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     tablesToRemove.Add(table);
                 else if (table.Name == "EcomOrders")
                 {
-                    table.AddColumn(new SqlColumn(SourceColumnNameForDestinationOrderCustomerAccessUserId, typeof(string), SqlDbType.NVarChar, table, -1, false, false, true));
+                    table.AddColumn(new SqlColumn(OrderCustomerAccessUserExternalId, typeof(string), SqlDbType.NVarChar, table, -1, false, false, true));
                 }
             }
             foreach (Table table in tablesToRemove)
@@ -470,7 +470,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             if (mapping != null)
             {
                 var columnMappings = mapping.GetColumnMappings();
-                if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, SourceColumnNameForDestinationOrderCustomerAccessUserId, true) == 0) != null)
+                if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0) != null)
                 {
                     var OrderCustomerAccessUserIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
                     if (OrderCustomerAccessUserIdMapping == null)
@@ -496,7 +496,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             if (cleanMapping != null)
             {
                 ColumnMappingCollection columnMapping = cleanMapping.GetColumnMappings(true);
-                columnMapping.RemoveAll(cm => cm.DestinationColumn != null && string.Compare(cm.DestinationColumn.Name, SourceColumnNameForDestinationOrderCustomerAccessUserId, true) == 0);
+                columnMapping.RemoveAll(cm => cm.DestinationColumn != null && string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
             }
         }
 
