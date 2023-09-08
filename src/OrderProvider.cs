@@ -538,7 +538,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             if (mapping != null && mapping.DestinationTable != null && mapping.DestinationTable.Name == "EcomOrders" && !string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
             {
                 object accessUserId = DBNull.Value;
-                var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, SourceColumnNameForDestinationOrderCustomerAccessUserId, true) == 0);
+                var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
                 if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
                 {
                     if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
