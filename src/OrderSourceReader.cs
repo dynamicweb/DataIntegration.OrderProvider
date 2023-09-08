@@ -16,7 +16,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 
         public OrderSourceReader(Mapping mapping, SqlConnection connection, bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts)
         {
-            base.mapping = mapping;
+            base.DoInitialization(mapping, connection);
             _columnMappings = mapping.GetColumnMappings();
             _command = new SqlCommand { Connection = connection };
             if (connection.State.ToString() != "Open")
