@@ -22,6 +22,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
     [AddInName("Dynamicweb.DataIntegration.Providers.Provider"), AddInLabel("Order Provider"), AddInDescription("Order provider"), AddInIgnore(false)]
     public class OrderProvider : SqlProvider.SqlProvider, ISource, IDestination, IParameterOptions
     {
+        private const string OrderCustomerAccessUserExternalId = "OrderCustomerAccessUserExternalId";
         private Job job = null;
 
         [AddInParameter("Export not yet exported Orders"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
@@ -133,7 +134,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         public override void LoadSettings(Job job)
         {
             this.job = job;
-            OrderTablesInJob(job);
+            OrderTablesInJob(job, true);
         }
 
         public new void Close()
@@ -155,13 +156,25 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     tablesToRemove.Add(table);
                 else if (table.Name == "EcomOrders")
                 {
-                    table.AddColumn(new SqlColumn(("OrderCustomerAccessUserExternalId"), typeof(string), SqlDbType.NVarChar, table, -1,
-                                                  false, false, true));
+                    table.AddColumn(new SqlColumn(OrderCustomerAccessUserExternalId, typeof(string), SqlDbType.NVarChar, table, -1, false, false, true));
                 }
             }
             foreach (Table table in tablesToRemove)
             {
                 result.RemoveTable(table);
+            }
+
+            var orderLinesTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrderLines", StringComparison.OrdinalIgnoreCase));
+            var ordersTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrders", StringComparison.OrdinalIgnoreCase));
+            if (orderLinesTable != null && ordersTable != null)
+            {
+                foreach (var column in ordersTable.Columns)
+                {
+                    if (!column.Name.Equals(OrderCustomerAccessUserExternalId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _ = orderLinesTable.AddNewColumn($"{column.Name}", column.Type, -1, false, column.IsPrimaryKey);
+                    }
+                }
             }
 
             return result;
@@ -314,28 +327,52 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             return new OrderSourceReader(mapping, Connection, ExportNotExportedOrders, ExportOnlyOrdersWithoutExtID, DoNotExportCarts);
         }
 
-        protected internal static void OrderTablesInJob(Job job)
+        protected internal static void OrderTablesInJob(Job job, bool isSourceLookup)
         {
             MappingCollection tables = new MappingCollection();
-            if (GetMappingByName(job.Mappings, "EcomOrders") != null)
-                tables.Add(GetMappingByName(job.Mappings, "EcomOrders"));
-            if (GetMappingByName(job.Mappings, "EcomOrderLines") != null)
-                tables.Add(GetMappingByName(job.Mappings, "EcomOrderLines"));
-            if (GetMappingByName(job.Mappings, "EcomOrderLineFields") != null)
-                tables.Add(GetMappingByName(job.Mappings, "EcomOrderLineFields"));
-            if (GetMappingByName(job.Mappings, "EcomOrderLineFieldGroupRelation") != null)
-                tables.Add(GetMappingByName(job.Mappings, "EcomOrderLineFieldGroupRelation"));
+
+            var mappings = GetMappingsByName(job.Mappings, "EcomOrders", isSourceLookup);
+            if (mappings != null)
+            {
+                tables.AddRange(mappings);
+            }
+
+            mappings = GetMappingsByName(job.Mappings, "EcomOrderLines", isSourceLookup);
+            if (mappings != null)
+            {
+                tables.AddRange(mappings);
+            }
+
+            mappings = GetMappingsByName(job.Mappings, "EcomOrderLineFields", isSourceLookup);
+            if (mappings != null)
+            {
+                tables.AddRange(mappings);
+            }
+
+            mappings = GetMappingsByName(job.Mappings, "EcomOrderLineFieldGroupRelation", isSourceLookup);
+            if (mappings != null)
+            {
+                tables.AddRange(mappings);
+            }
+
             job.Mappings = tables;
         }
 
-        internal static Mapping GetMappingByName(MappingCollection collection, string name)
+        internal static List<Mapping> GetMappingsByName(MappingCollection collection, string name, bool isSourceLookup)
         {
-            return collection.Find(map => map.DestinationTable.Name == name);
+            if (isSourceLookup)
+            {
+                return collection.FindAll(map => map.SourceTable != null && map.SourceTable.Name == name);
+            }
+            else
+            {
+                return collection.FindAll(map => map.DestinationTable != null && map.DestinationTable.Name == name);
+            }
         }
 
         public override bool RunJob(Job job)
         {
-            OrderTablesInJob(job);
+            OrderTablesInJob(job, false);
 
             var writers = new List<DynamicwebBulkInsertDestinationWriter>();
             SqlTransaction sqlTransaction = null;
@@ -433,7 +470,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             if (mapping != null)
             {
                 var columnMappings = mapping.GetColumnMappings();
-                if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0) != null)
+                if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0) != null)
                 {
                     var OrderCustomerAccessUserIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
                     if (OrderCustomerAccessUserIdMapping == null)
@@ -459,7 +496,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             if (cleanMapping != null)
             {
                 ColumnMappingCollection columnMapping = cleanMapping.GetColumnMappings(true);
-                columnMapping.RemoveAll(cm => cm.DestinationColumn != null && string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0);
+                columnMapping.RemoveAll(cm => cm.DestinationColumn != null && string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
             }
         }
 
@@ -501,7 +538,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             if (mapping != null && mapping.DestinationTable != null && mapping.DestinationTable.Name == "EcomOrders" && !string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
             {
                 object accessUserId = DBNull.Value;
-                var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserExternalId", true) == 0);
+                var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
                 if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
                 {
                     if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
