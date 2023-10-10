@@ -1,5 +1,4 @@
 ﻿using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.Providers.SqlProvider;
 using Dynamicweb.Ecommerce.Orders;
 using System;
 using System.Collections.Generic;
@@ -8,7 +7,7 @@ using System.Linq;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
-    internal class OrderSourceReader : SqlSourceReader
+    internal class OrderSourceReader : BaseSqlReader
     {
         private static MappingConditionalCollection _ordersConditions = null;
         private static List<string> _ordersToExport = null;
