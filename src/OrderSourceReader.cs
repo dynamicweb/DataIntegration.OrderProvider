@@ -53,7 +53,6 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     sql = sql + " where " + whereSql;
 
                 _command.CommandText = sql;
-                _reader?.Close();
                 _reader = _command.ExecuteReader();
             }
             catch (SqlException)
