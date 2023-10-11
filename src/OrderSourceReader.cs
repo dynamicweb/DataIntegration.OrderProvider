@@ -13,9 +13,8 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         private static List<string> _ordersToExport = null;
         private ColumnMappingCollection _columnMappings = null;
 
-        public OrderSourceReader(Mapping mapping, SqlConnection connection, bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts)
+        public OrderSourceReader(Mapping mapping, SqlConnection connection, bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts) : base(mapping, connection)
         {
-            base.DoInitialization(mapping, connection);
             _columnMappings = mapping.GetColumnMappings();
             _command = new SqlCommand { Connection = connection };
             if (connection.State.ToString() != "Open")
