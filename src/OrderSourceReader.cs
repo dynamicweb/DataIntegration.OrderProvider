@@ -1,5 +1,4 @@
 ﻿using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.Providers.SqlProvider;
 using Dynamicweb.Ecommerce.Orders;
 using System;
 using System.Collections.Generic;
@@ -8,15 +7,14 @@ using System.Linq;
 
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 {
-    internal class OrderSourceReader : SqlSourceReader
+    internal class OrderSourceReader : BaseSqlReader
     {
         private static MappingConditionalCollection _ordersConditions = null;
         private static List<string> _ordersToExport = null;
         private ColumnMappingCollection _columnMappings = null;
 
-        public OrderSourceReader(Mapping mapping, SqlConnection connection, bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts)
+        public OrderSourceReader(Mapping mapping, SqlConnection connection, bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts) : base(mapping, connection)
         {
-            base.DoInitialization(mapping, connection);
             _columnMappings = mapping.GetColumnMappings();
             _command = new SqlCommand { Connection = connection };
             if (connection.State.ToString() != "Open")
