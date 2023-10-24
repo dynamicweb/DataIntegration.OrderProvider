@@ -262,7 +262,7 @@ public class OrderProvider : BaseSqlProvider, ISource, IDestination, IParameterO
         return new OrderSourceReader(mapping, Connection, ExportNotExportedOrders, ExportOnlyOrdersWithoutExtID, DoNotExportCarts);
     }
 
-    protected internal static void OrderTablesInJob(Job job, bool isSourceLookup)
+    public override void OrderTablesInJob(Job job, bool isSourceLookup)
     {
         MappingCollection tables = new MappingCollection();
 
