@@ -62,11 +62,11 @@ public class OrderProvider : BaseSqlProvider, ISource, IDestination, IParameterO
         DiscardDuplicates = false;
     }
 
-        public override void LoadSettings(Job job)
-        {
-            this.job = job;
-            OrderTablesInJob(job, true);
-        }
+    public override void LoadSettings(Job job)
+    {
+        this.job = job;
+        OrderTablesInJob(job, true);
+    }
 
     public new void Close()
     {
@@ -78,22 +78,16 @@ public class OrderProvider : BaseSqlProvider, ISource, IDestination, IParameterO
 
     public override Schema GetOriginalSourceSchema()
     {
-        Schema result = GetSqlSourceSchema(Connection);
         List<string> tablestToKeep = new() { "EcomOrders", "EcomOrderLines", "EcomOrderLineFields", "EcomOrderLineFieldGroupRelation" };
-        List<Table> tablesToRemove = new();
+        Schema result = GetSqlSourceSchema(Connection, tablestToKeep);
+
         foreach (Table table in result.GetTables())
         {
-            if (!tablestToKeep.Contains(table.Name))
-                tablesToRemove.Add(table);
-            else if (table.Name == "EcomOrders")
+            if (table.Name == "EcomOrders")
             {
                 table.AddColumn(new SqlColumn(OrderCustomerAccessUserExternalId, typeof(string), SqlDbType.NVarChar, table, -1,
                                               false, false, true));
             }
-        }
-        foreach (Table table in tablesToRemove)
-        {
-            result.RemoveTable(table);
         }
 
         var orderLinesTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrderLines", StringComparison.OrdinalIgnoreCase));
