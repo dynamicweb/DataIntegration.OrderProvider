@@ -71,8 +71,16 @@ public class OrderProvider : BaseSqlProvider, ISource, IDestination, IParameterO
     public new void Close()
     {
         if (job != null && job.Result == JobResult.Completed)
-            OrderSourceReader.UpdateExportedOrdersInDb(OrderStateAfterExport, connection);
-
+        {
+            try
+            {
+                OrderSourceReader.UpdateExportedOrdersInDb(OrderStateAfterExport, connection);
+            }
+            catch (Exception ex)
+            {
+                Logger?.Warn(ex.Message);
+            }
+        }
         Connection.Close();
     }
 
