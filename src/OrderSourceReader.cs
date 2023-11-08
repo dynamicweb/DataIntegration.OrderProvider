@@ -153,6 +153,8 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 SqlCommand command = new SqlCommand { Connection = connection };
                 try
                 {
+                    command.Transaction = connection.BeginTransaction("OrderProviderTransaction");
+
                     if (connection.State.ToString() != "Open")
                         connection.Open();
 
@@ -185,10 +187,12 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                         command.ExecuteNonQuery();
                         ClearOrderCache(_ordersToExport);
                     }
+                    command.Transaction.Commit();
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception(string.Format("Exception message: {0} Sql query: {1}", ex.Message, command.CommandText), ex);
+                    command.Transaction.Rollback();
+                    throw new Exception(string.Format("A rollback is made as exception is made with message: {0} Sql query: {1}", ex.Message, command.CommandText), ex);
                 }
                 finally
                 {
