@@ -19,7 +19,7 @@ using System.Xml.Linq;
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider;
 
 [AddInName("Dynamicweb.DataIntegration.Providers.Provider"), AddInLabel("Order Provider"), AddInDescription("Order provider"), AddInIgnore(false)]
-public class OrderProvider : BaseSqlProvider, ISource, IDestination, IParameterOptions
+public class OrderProvider : BaseSqlProvider, IParameterOptions
 {
     private const string OrderCustomerAccessUserExternalId = "OrderCustomerAccessUserExternalId";
     private Job job = null;
