@@ -40,6 +40,12 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             LoadReader(whereSql);
         }
 
+        public new void Write(Dictionary<string, object> row)
+        {
+            base.Write(row);
+            Ecommerce.Services.Orders.ClearCache(Core.Converter.ToString(_reader["OrderId"]));
+        }
+
         private void LoadReader(string whereSql)
         {
             try
