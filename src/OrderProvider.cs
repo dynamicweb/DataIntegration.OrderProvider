@@ -68,7 +68,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
         OrderTablesInJob(job, true);
     }
 
-    public new void Close()
+    public override void Close()
     {
         if (job != null && job.Result == JobResult.Completed)
         {
@@ -206,7 +206,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
         return null;
     }
 
-    public new virtual void SaveAsXml(XmlTextWriter xmlTextWriter)
+    public override void SaveAsXml(XmlTextWriter xmlTextWriter)
     {
         xmlTextWriter.WriteElementString("SqlConnectionString", SqlConnectionString);
         xmlTextWriter.WriteElementString("ExportNotYetExportedOrders", ExportNotExportedOrders.ToString(CultureInfo.CurrentCulture));
@@ -259,7 +259,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
         DiscardDuplicates = false;
     }
 
-    public new ISourceReader GetReader(Mapping mapping)
+    public override ISourceReader GetReader(Mapping mapping)
     {
         return new OrderSourceReader(mapping, Connection, ExportNotExportedOrders, ExportOnlyOrdersWithoutExtID, DoNotExportCarts);
     }
