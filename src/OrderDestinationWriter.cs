@@ -20,6 +20,7 @@ internal class OrderDestinationWriter : BaseSqlWriter
     private bool SkipFailingRows { get; }
     internal SqlCommand SqlCommand { get; }
     internal int RowsToWriteCount { get; set; }
+    private int LastLogRowsCount { get; set; }
 
     public OrderDestinationWriter(Mapping mapping, SqlConnection connection, ILogger logger, bool skipFailingRows)
     {
@@ -45,11 +46,6 @@ internal class OrderDestinationWriter : BaseSqlWriter
         {
             destColumns.Add((SqlColumn)columnMapping.DestinationColumn);
         }
-        if (Mapping.DestinationTable != null && Mapping.DestinationTable.Name == "EcomAssortmentPermissions")
-        {
-            if (columnMappings.Find(m => string.Compare(m.DestinationColumn.Name, "AssortmentPermissionAccessUserID", true) == 0) == null)
-                destColumns.Add(new SqlColumn("AssortmentPermissionAccessUserID", typeof(string), SqlDbType.Int, null, -1, false, true, false));
-        }
         SQLTable.CreateTempTable(SqlCommand, Mapping.DestinationTable.SqlSchema, Mapping.DestinationTable.Name, TempTablePrefix, destColumns, Logger);
 
         TableToWrite = DataToWrite.Tables.Add(Mapping.DestinationTable.Name + TempTablePrefix);
@@ -71,4 +67,48 @@ internal class OrderDestinationWriter : BaseSqlWriter
 
     internal void MoveDataToMainTable(SqlTransaction sqlTransaction, bool updateOnlyExistingRecords, bool insertOnlyNewRecords) =>
         MoveDataToMainTable(Mapping, SqlCommand, sqlTransaction, TempTablePrefix, updateOnlyExistingRecords, insertOnlyNewRecords);
+
+
+    public new void Write(Dictionary<string, object> row)
+    {
+        DataRow dataRow = TableToWrite.NewRow();
+        var columnMappings = Mapping.GetColumnMappings();
+
+        var activeColumnMappings = columnMappings.Where(cm => cm.Active);
+        foreach (ColumnMapping columnMapping in activeColumnMappings)
+        {
+            object rowValue = null;
+            if (columnMapping.HasScriptWithValue || row.TryGetValue(columnMapping.SourceColumn?.Name, out rowValue))
+            {
+                object dataToRow = columnMapping.ConvertInputValueToOutputValue(rowValue);
+
+                if (columnMappings.Any(obj => obj.DestinationColumn.Name == columnMapping.DestinationColumn.Name && obj.GetId() != columnMapping.GetId()))
+                {
+                    dataRow[columnMapping.DestinationColumn.Name] += dataToRow.ToString();
+                }
+                else
+                {
+                    dataRow[columnMapping.DestinationColumn.Name] = dataToRow;
+                }
+            }
+            else
+            {
+                Logger.Info(BaseDestinationWriter.GetRowValueNotFoundMessage(row, columnMapping.SourceColumn.Table.Name, columnMapping.SourceColumn.Name));
+            }
+        }
+
+        // if 10k write table to db, empty table
+        if (TableToWrite.Rows.Count >= 1000)
+        {
+            RowsToWriteCount = RowsToWriteCount + TableToWrite.Rows.Count;
+            SkippedFailedRowsCount = SqlBulkCopierWriteToServer(SqlBulkCopier, TableToWrite, SkipFailingRows, Mapping, Logger);
+            RowsToWriteCount = RowsToWriteCount - SkippedFailedRowsCount;
+            TableToWrite.Clear();
+            if (RowsToWriteCount >= LastLogRowsCount + 10000)
+            {
+                LastLogRowsCount = RowsToWriteCount;
+                Logger.Log("Added " + RowsToWriteCount + " rows to temporary table for " + Mapping.DestinationTable.Name + ".");
+            }
+        }
+    }
 }
