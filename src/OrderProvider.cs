@@ -360,7 +360,10 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
         catch (Exception ex)
         {
             string msg = ex.Message;
-            LogManager.System.GetLogger(LogCategory.Application, "Dataintegration").Error($"{GetType().Name} error: {ex.Message} Stack: {ex.StackTrace}", ex);
+            string stackTrace = ex.StackTrace;
+
+            Logger?.Error($"Error: {msg.Replace(System.Environment.NewLine, " ")} Stack: {stackTrace.Replace(System.Environment.NewLine, " ")}", ex);
+            LogManager.System.GetLogger(LogCategory.Application, "Dataintegration").Error($"{GetType().Name} error: {msg} Stack: {stackTrace}", ex);
 
             if (sourceRow != null)
                 msg += GetFailedSourceRowMessage(sourceRow);
