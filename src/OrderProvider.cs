@@ -415,7 +415,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
                 var OrderCustomerAccessUserIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
                 if (OrderCustomerAccessUserIdMapping == null)
                 {
-                    Column randomColumn = new Column(Guid.NewGuid().ToString(), typeof(string), mapping.SourceTable, false, true);
+                    var randomColumn = job.Source.GetSchema().GetTables().First(obj => obj.Columns.Count > 0).Columns.First();
                     SourceColumnNameForDestinationOrderCustomerAccessUserId = randomColumn.Name;
                     mapping.AddMapping(randomColumn, job.Destination.GetSchema().GetTables().Find(t => t.Name == "EcomOrders").Columns.Find(c => string.Compare(c.Name, "OrderCustomerAccessUserId", true) == 0), true);
                 }
