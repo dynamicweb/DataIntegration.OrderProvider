@@ -21,10 +21,14 @@ internal class OrderDestinationWriter : BaseSqlWriter
     internal SqlCommand SqlCommand { get; }
     internal int RowsToWriteCount { get; set; }
     private int LastLogRowsCount { get; set; }
+    private readonly ColumnMappingCollection _columnMappings;
+    private readonly IEnumerable<ColumnMapping> _activeColumnMappings;
 
     public OrderDestinationWriter(Mapping mapping, SqlConnection connection, ILogger logger, bool skipFailingRows)
     {
         Mapping = mapping;
+        _columnMappings = Mapping.GetColumnMappings();
+        _activeColumnMappings = _columnMappings?.Where(cm => cm.Active) ?? Enumerable.Empty<ColumnMapping>();
         SqlCommand = connection.CreateCommand();
         SqlCommand.CommandTimeout = 1200;
         Logger = logger;
@@ -68,21 +72,18 @@ internal class OrderDestinationWriter : BaseSqlWriter
     internal void MoveDataToMainTable(SqlTransaction sqlTransaction, bool updateOnlyExistingRecords, bool insertOnlyNewRecords) =>
         MoveDataToMainTable(Mapping, SqlCommand, sqlTransaction, TempTablePrefix, updateOnlyExistingRecords, insertOnlyNewRecords);
 
-
     public new void Write(Dictionary<string, object> row)
     {
         DataRow dataRow = TableToWrite.NewRow();
-        var columnMappings = Mapping.GetColumnMappings();
 
-        var activeColumnMappings = columnMappings.Where(cm => cm.Active);
-        foreach (ColumnMapping columnMapping in activeColumnMappings)
+        foreach (ColumnMapping columnMapping in _activeColumnMappings)
         {
             object rowValue = null;
             if (columnMapping.HasScriptWithValue || row.TryGetValue(columnMapping.SourceColumn?.Name, out rowValue))
             {
                 object dataToRow = columnMapping.ConvertInputValueToOutputValue(rowValue);
 
-                if (columnMappings.Any(obj => obj.DestinationColumn.Name == columnMapping.DestinationColumn.Name && obj.GetId() != columnMapping.GetId()))
+                if (_columnMappings.Any(obj => obj.DestinationColumn.Name == columnMapping.DestinationColumn.Name && obj.GetId() != columnMapping.GetId()))
                 {
                     dataRow[columnMapping.DestinationColumn.Name] += dataToRow.ToString();
                 }
