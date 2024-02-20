@@ -140,15 +140,23 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 
         public override Dictionary<string, object> GetNext()
         {
+            Dictionary<string, object> row = _columnMappings.Where(columnMapping => columnMapping.SourceColumn != null).GroupBy(cm => cm.SourceColumn.Name, (key, group) => group.First()).ToDictionary(columnMapping => columnMapping.SourceColumn.Name, columnMapping => _reader[columnMapping.SourceColumn.Name]);
             if (mapping.SourceTable.Name == "EcomOrders")
             {
                 string orderId = Core.Converter.ToString(_reader["OrderId"]);
-                if (!string.IsNullOrEmpty(orderId) && !_ordersToExport.Contains(orderId))
+                if (!string.IsNullOrEmpty(orderId))
                 {
-                    _ordersToExport.Add(orderId);
+                    if (!_ordersToExport.Contains(orderId))
+                    {
+                        _ordersToExport.Add(orderId);
+                    }
+                    if (!row.ContainsKey("OrderId"))
+                    {
+                        row.Add("OrderId", orderId);
+                    }
                 }
-            }
-            return _columnMappings.Where(columnMapping => columnMapping.SourceColumn != null).GroupBy(cm => cm.SourceColumn.Name, (key, group) => group.First()).ToDictionary(columnMapping => columnMapping.SourceColumn.Name, columnMapping => _reader[columnMapping.SourceColumn.Name]);
+            }                        
+            return row;
         }
 
         public static void UpdateExportedOrdersInDb(string orderStateIDAfterExport, SqlConnection connection)
