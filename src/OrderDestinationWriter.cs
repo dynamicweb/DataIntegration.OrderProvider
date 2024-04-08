@@ -1,6 +1,7 @@
 ﻿using Dynamicweb.DataIntegration.Integration;
 using Dynamicweb.DataIntegration.ProviderHelpers;
 using Dynamicweb.Logging;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -18,13 +19,15 @@ internal class OrderDestinationWriter : BaseSqlWriter
     private DataSet DataToWrite { get; } = new DataSet();
     private string TempTablePrefix { get; }
     private bool SkipFailingRows { get; }
+    private bool DiscardDuplicates { get; }
     internal SqlCommand SqlCommand { get; }
     internal int RowsToWriteCount { get; set; }
     private int LastLogRowsCount { get; set; }
+    protected DuplicateRowsHandler duplicateRowsHandler;
     private readonly ColumnMappingCollection _columnMappings;
     private readonly IEnumerable<ColumnMapping> _activeColumnMappings;
 
-    public OrderDestinationWriter(Mapping mapping, SqlConnection connection, ILogger logger, bool skipFailingRows)
+    public OrderDestinationWriter(Mapping mapping, SqlConnection connection, ILogger logger, bool skipFailingRows, bool discardDuplicates)
     {
         Mapping = mapping;
         _columnMappings = Mapping.GetColumnMappings();
@@ -33,6 +36,7 @@ internal class OrderDestinationWriter : BaseSqlWriter
         SqlCommand.CommandTimeout = 1200;
         Logger = logger;
         SkipFailingRows = skipFailingRows;
+        DiscardDuplicates = discardDuplicates;
         TempTablePrefix = $"TempTableForBulkImport{mapping.GetId()}";
         SqlBulkCopier = new SqlBulkCopy(connection);
         SqlBulkCopier.DestinationTableName = mapping.DestinationTable.Name + TempTablePrefix;
@@ -56,6 +60,10 @@ internal class OrderDestinationWriter : BaseSqlWriter
         foreach (SqlColumn column in destColumns)
         {
             TableToWrite.Columns.Add(column.Name, column.Type);
+        }
+        if (DiscardDuplicates)
+        {
+            duplicateRowsHandler = new DuplicateRowsHandler(Logger, Mapping);
         }
     }
 
@@ -98,18 +106,34 @@ internal class OrderDestinationWriter : BaseSqlWriter
             }
         }
 
-        // if 10k write table to db, empty table
-        if (TableToWrite.Rows.Count >= 1000)
+        if (!DiscardDuplicates || !duplicateRowsHandler.IsRowDuplicate(_columnMappings, Mapping, dataRow, row))
         {
-            RowsToWriteCount = RowsToWriteCount + TableToWrite.Rows.Count;
-            SkippedFailedRowsCount = SqlBulkCopierWriteToServer(SqlBulkCopier, TableToWrite, SkipFailingRows, Mapping, Logger);
-            RowsToWriteCount = RowsToWriteCount - SkippedFailedRowsCount;
-            TableToWrite.Clear();
-            if (RowsToWriteCount >= LastLogRowsCount + 10000)
+            TableToWrite.Rows.Add(dataRow);
+            // if 10k write table to db, empty table
+            if (TableToWrite.Rows.Count >= 1000)
             {
-                LastLogRowsCount = RowsToWriteCount;
-                Logger.Log("Added " + RowsToWriteCount + " rows to temporary table for " + Mapping.DestinationTable.Name + ".");
+                RowsToWriteCount = RowsToWriteCount + TableToWrite.Rows.Count;
+                SkippedFailedRowsCount = SqlBulkCopierWriteToServer(SqlBulkCopier, TableToWrite, SkipFailingRows, Mapping, Logger);
+                RowsToWriteCount = RowsToWriteCount - SkippedFailedRowsCount;
+                TableToWrite.Clear();
+                if (RowsToWriteCount >= LastLogRowsCount + 10000)
+                {
+                    LastLogRowsCount = RowsToWriteCount;
+                    Logger.Log("Added " + RowsToWriteCount + " rows to temporary table for " + Mapping.DestinationTable.Name + ".");
+                }
             }
+        }
+    }
+
+    public new void Close()
+    {
+        string text = Mapping.DestinationTable.Name + TempTablePrefix;
+        SqlCommand.CommandText = "if exists (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'" + text + "') AND type in (N'U')) drop table " + text;
+        SqlCommand.ExecuteNonQuery();
+        ((IDisposable)SqlBulkCopier).Dispose();
+        if (duplicateRowsHandler != null)
+        {
+            duplicateRowsHandler.Dispose();
         }
     }
 }
