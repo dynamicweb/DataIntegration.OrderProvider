@@ -11,7 +11,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider;
 
 internal class OrderDestinationWriter : BaseSqlWriter
 {
-    private new Mapping Mapping { get; }
+    public new Mapping Mapping { get; }
     private ILogger Logger { get; }
     private SqlBulkCopy SqlBulkCopier { get; }
     private int SkippedFailedRowsCount { get; set; }
@@ -46,7 +46,7 @@ internal class OrderDestinationWriter : BaseSqlWriter
             connection.Open();
     }
 
-    protected new virtual void Initialize()
+    public new void Initialize()
     {
         List<SqlColumn> destColumns = new();
         var columnMappings = Mapping.GetColumnMappings();

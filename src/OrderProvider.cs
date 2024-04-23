@@ -19,7 +19,7 @@ using System.Xml.Linq;
 namespace Dynamicweb.DataIntegration.Providers.OrderProvider;
 
 [AddInName("Dynamicweb.DataIntegration.Providers.Provider"), AddInLabel("Order Provider"), AddInDescription("Order provider"), AddInIgnore(false)]
-public class OrderProvider : BaseSqlProvider, IParameterOptions
+public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDestination
 {
     private const string OrderCustomerAccessUserExternalId = "OrderCustomerAccessUserExternalId";
     private Job job = null;
@@ -86,17 +86,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
 
     public override Schema GetOriginalSourceSchema()
     {
-        List<string> tablestToKeep = new() { "EcomOrders", "EcomOrderLines", "EcomOrderLineFields", "EcomOrderLineFieldGroupRelation" };
-        Schema result = GetSqlSourceSchema(Connection, tablestToKeep);
-
-        foreach (Table table in result.GetTables())
-        {
-            if (table.Name == "EcomOrders")
-            {
-                table.AddColumn(new SqlColumn(OrderCustomerAccessUserExternalId, typeof(string), SqlDbType.NVarChar, table, -1,
-                                              false, false, true));
-            }
-        }
+        Schema result = GetSqlSchemas();
 
         var orderLinesTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrderLines", StringComparison.OrdinalIgnoreCase));
         var ordersTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrders", StringComparison.OrdinalIgnoreCase));
@@ -106,7 +96,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
             {
                 if (!column.Name.Equals(OrderCustomerAccessUserExternalId, StringComparison.OrdinalIgnoreCase))
                 {
-                    _ = orderLinesTable.AddNewColumn($"{column.Name}", column.Type, -1, false, column.IsPrimaryKey);
+                    orderLinesTable.AddColumn(new SqlColumn(column.Name, typeof(string), SqlDbType.NVarChar, orderLinesTable, -1, false, false, true));
                 }
             }
         }
@@ -116,7 +106,23 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
 
     public override Schema GetOriginalDestinationSchema()
     {
-        return GetOriginalSourceSchema();
+        Schema result = GetSqlSchemas();
+
+        foreach (Table table in result.GetTables())
+        {
+            if (table.Name == "EcomOrders")
+            {
+                table.AddColumn(new SqlColumn(OrderCustomerAccessUserExternalId, typeof(string), SqlDbType.NVarChar, table, -1, false, false, true));
+            }
+        }
+
+        return result;
+    }
+
+    private Schema GetSqlSchemas()
+    {
+        List<string> tablestToKeep = new() { "EcomOrders", "EcomOrderLines", "EcomOrderLineFields", "EcomOrderLineFieldGroupRelation" };
+        return GetSqlSourceSchema(Connection, tablestToKeep);
     }
 
     public override void OverwriteSourceSchemaToOriginal()
@@ -126,14 +132,21 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
 
     public override void OverwriteDestinationSchemaToOriginal()
     {
-        Schema = GetOriginalSourceSchema();
+        Schema = GetOriginalDestinationSchema();
     }
 
-    public override Schema GetSchema()
+    Schema IDestination.GetSchema()
+    {
+        Schema ??= GetOriginalDestinationSchema();
+        return Schema;
+    }
+
+    Schema ISource.GetSchema()
     {
         Schema ??= GetOriginalSourceSchema();
         return Schema;
     }
+
     public OrderProvider(XmlNode xmlNode)
     {
         foreach (XmlNode node in xmlNode.ChildNodes)
@@ -206,7 +219,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
         return null;
     }
 
-    public override void SaveAsXml(XmlTextWriter xmlTextWriter)
+    void ISource.SaveAsXml(XmlTextWriter xmlTextWriter)
     {
         xmlTextWriter.WriteElementString("SqlConnectionString", SqlConnectionString);
         xmlTextWriter.WriteElementString("ExportNotYetExportedOrders", ExportNotExportedOrders.ToString(CultureInfo.CurrentCulture));
@@ -216,7 +229,20 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions
         xmlTextWriter.WriteElementString("DiscardDuplicates", DiscardDuplicates.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("RemoveMissingOrderLines", RemoveMissingOrderLines.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("SkipFailingRows", SkipFailingRows.ToString());
-        GetSchema().SaveAsXml(xmlTextWriter);
+        (this as ISource).GetSchema().SaveAsXml(xmlTextWriter);
+    }
+
+    void IDestination.SaveAsXml(XmlTextWriter xmlTextWriter)
+    {
+        xmlTextWriter.WriteElementString("SqlConnectionString", SqlConnectionString);
+        xmlTextWriter.WriteElementString("ExportNotYetExportedOrders", ExportNotExportedOrders.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("ExportOnlyOrdersWithoutExtID", ExportOnlyOrdersWithoutExtID.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("DoNotExportCarts ", DoNotExportCarts.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("OrderStateAfterExport ", OrderStateAfterExport);
+        xmlTextWriter.WriteElementString("DiscardDuplicates", DiscardDuplicates.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("RemoveMissingOrderLines", RemoveMissingOrderLines.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("SkipFailingRows", SkipFailingRows.ToString());
+        (this as IDestination).GetSchema().SaveAsXml(xmlTextWriter);
     }
 
     public override void UpdateSourceSettings(ISource source)
