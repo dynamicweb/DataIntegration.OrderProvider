@@ -1,4 +1,5 @@
 ﻿using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.Ecommerce.Orders;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -189,7 +190,8 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                             if (!string.IsNullOrEmpty(ids))
                             {
                                 command.CommandText = sql + string.Format(" WHERE [OrderID] IN ('{0}')", ids);
-                                command.ExecuteNonQuery();
+                                command.ExecuteNonQuery(); 
+                                ClearOrderCache(idsCollection);
                             }
                             taken = taken + step;
                         }
@@ -197,7 +199,8 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     else
                     {
                         command.CommandText = sql + string.Format(" WHERE [OrderID] IN ('{0}')", string.Join("','", _ordersToExport));
-                        command.ExecuteNonQuery();
+                        command.ExecuteNonQuery(); 
+                        ClearOrderCache(_ordersToExport);
                     }
                     command.Transaction.Commit();
                 }
@@ -211,6 +214,15 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     _ordersConditions = null;
                     _ordersToExport = null;
                 }
+            }
+        }
+
+        private static void ClearOrderCache(IEnumerable<string> orderIds)
+        {
+            OrderService os = new();
+            foreach (string id in orderIds)
+            {
+                os.RemoveOrderCache(id);
             }
         }
     }
