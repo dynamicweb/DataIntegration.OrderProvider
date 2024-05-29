@@ -381,7 +381,6 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             RemoveMissingRows(writers, sqlTransaction);
 
             sqlTransaction.Commit();
-            Ecommerce.Services.Orders.ClearCache();
         }
         catch (Exception ex)
         {
