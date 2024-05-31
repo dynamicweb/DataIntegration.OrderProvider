@@ -43,6 +43,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         public new void Write(Dictionary<string, object> row)
         {
             base.Write(row);
+            // Need to clear cache for the order when doing response-mappings
             Ecommerce.Services.Orders.ClearCache(Core.Converter.ToString(_reader["OrderId"]));
         }
 
@@ -155,7 +156,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                         row.Add("OrderId", orderId);
                     }
                 }
-            }                        
+            }
             return row;
         }
 
@@ -189,7 +190,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                             if (!string.IsNullOrEmpty(ids))
                             {
                                 command.CommandText = sql + string.Format(" WHERE [OrderID] IN ('{0}')", ids);
-                                command.ExecuteNonQuery();
+                                command.ExecuteNonQuery(); 
                                 ClearOrderCache(idsCollection);
                             }
                             taken = taken + step;
@@ -198,7 +199,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     else
                     {
                         command.CommandText = sql + string.Format(" WHERE [OrderID] IN ('{0}')", string.Join("','", _ordersToExport));
-                        command.ExecuteNonQuery();
+                        command.ExecuteNonQuery(); 
                         ClearOrderCache(_ordersToExport);
                     }
                     command.Transaction.Commit();
@@ -218,7 +219,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 
         private static void ClearOrderCache(IEnumerable<string> orderIds)
         {
-            OrderService os = new OrderService();
+            OrderService os = new();
             foreach (string id in orderIds)
             {
                 os.RemoveOrderCache(id);
