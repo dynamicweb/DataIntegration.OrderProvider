@@ -77,7 +77,7 @@ internal class OrderDestinationWriter : BaseSqlWriter
         }
     }
 
-    internal void MoveDataToMainTable(SqlTransaction sqlTransaction, bool updateOnlyExistingRecords, bool insertOnlyNewRecords) =>
+    internal int MoveDataToMainTable(SqlTransaction sqlTransaction, bool updateOnlyExistingRecords, bool insertOnlyNewRecords) =>
         MoveDataToMainTable(Mapping, SqlCommand, sqlTransaction, TempTablePrefix, updateOnlyExistingRecords, insertOnlyNewRecords);
 
     public new void Write(Dictionary<string, object> row)
@@ -102,7 +102,7 @@ internal class OrderDestinationWriter : BaseSqlWriter
             }
             else
             {
-                Logger.Info(BaseDestinationWriter.GetRowValueNotFoundMessage(row, columnMapping.SourceColumn.Table.Name, columnMapping.SourceColumn.Name));
+                Logger.Info(GetRowValueNotFoundMessage(row, columnMapping.SourceColumn.Table.Name, columnMapping.SourceColumn.Name));
             }
         }
 

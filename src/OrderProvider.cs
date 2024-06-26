@@ -359,9 +359,11 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                         while (!reader.IsDone())
                         {
                             sourceRow = reader.GetNext();
-                            ProcessInputRow(mapping, sourceRow);
-                            ProcessRow(mapping, columnMappings, sourceRow);
-                            writer.Write(sourceRow);
+                            if (ProcessInputRow(sourceRow, mapping))
+                            {
+                                ProcessRow(mapping, columnMappings, sourceRow);
+                                writer.Write(sourceRow);
+                            }
                         }
                         writer.FinishWriting();
                         writers.Add(writer);
@@ -375,7 +377,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             sqlTransaction = Connection.BeginTransaction();
             foreach (OrderDestinationWriter writer in writers)
             {
-                writer.MoveDataToMainTable(sqlTransaction, false, false);
+                writer.RowsAffected += writer.MoveDataToMainTable(sqlTransaction, false, false);
             }
 
             RemoveMissingRows(writers, sqlTransaction);
@@ -546,7 +548,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     writer.SqlCommand.CommandText = $"DELETE FROM EcomOrderLines WHERE OrderLineID NOT IN (SELECT OrderLineID FROM {tempTableName}) " +
                         $"AND OrderLineOrderID IN(SELECT DISTINCT(OrderLineOrderID) FROM EcomOrderLines WHERE OrderLineID IN(SELECT OrderLineID FROM {tempTableName}))";
                 }
-                writer.SqlCommand.ExecuteNonQuery();
+                writer.RowsAffected += writer.SqlCommand.ExecuteNonQuery();
             }
         }
     }
