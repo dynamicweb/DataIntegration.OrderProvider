@@ -1,4 +1,5 @@
-﻿using Dynamicweb.Data;
+﻿using Dynamicweb.Core;
+using Dynamicweb.Data;
 using Dynamicweb.DataIntegration.Integration;
 using Dynamicweb.DataIntegration.Integration.Interfaces;
 using Dynamicweb.DataIntegration.ProviderHelpers;
@@ -25,6 +26,9 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     private Job job = null;
     private Schema Schema { get; set; }
     private string SqlConnectionString { get; set; }
+    private string SourceColumnNameForDestinationOrderCustomerAccessUserId = string.Empty;
+    private ColumnMapping OrderShippingMethodCodeMapping = null;
+    private ColumnMapping OrderPaymentMethodCodeMapping = null;
 
     [AddInParameter("Export not yet exported Orders"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
     public virtual bool ExportNotExportedOrders { get; set; }
@@ -53,7 +57,6 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         get { return connection ?? (connection = (SqlConnection)Database.CreateConnection()); }
         set { connection = value; }
     }
-
 
     public OrderProvider(string connectionString)
     {
@@ -432,8 +435,6 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         return result;
     }
 
-    private string SourceColumnNameForDestinationOrderCustomerAccessUserId = string.Empty;
-
     private void AddMappingsToJobThatNeedsToBeThereForMoveToMainTables(Job job)
     {
         Mapping mapping = job.Mappings.Find(m => m.DestinationTable.Name == "EcomOrders");
@@ -457,6 +458,40 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     }
                 }
             }
+            var ordersTable = job.Destination.GetSchema().GetTables().FirstOrDefault(t => string.Equals(t.Name, "EcomOrders", StringComparison.OrdinalIgnoreCase));
+            if (ordersTable is not null &&
+                columnMappings.FirstOrDefault(cm => cm.Active && string.Equals(cm.DestinationColumn.Name, "OrderId", StringComparison.OrdinalIgnoreCase)) is not null)
+            {
+                OrderShippingMethodCodeMapping = columnMappings.FirstOrDefault(cm => cm.Active && string.Equals(cm.DestinationColumn.Name, "OrderShippingMethodCode", StringComparison.OrdinalIgnoreCase));
+                if (OrderShippingMethodCodeMapping is not null)
+                {
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderShippingMethodId", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderShippingMethod", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderShippingMethodDescription", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderShippingMethodAgentCode", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderShippingMethodAgentServiceCode", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderShippingProviderData", StringComparison.OrdinalIgnoreCase)));
+                }
+                OrderPaymentMethodCodeMapping = columnMappings.FirstOrDefault(cm => cm.Active && string.Equals(cm.DestinationColumn.Name, "OrderPaymentMethodCode", StringComparison.OrdinalIgnoreCase));
+                if (OrderPaymentMethodCodeMapping is not null)
+                {
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderPaymentMethodId", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderPaymentMethod", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderPaymentMethodDescription", StringComparison.OrdinalIgnoreCase)));
+                    EnsureMapping(columnMappings, mapping, ordersTable.Columns.FirstOrDefault(c => string.Equals(c.Name, "OrderPaymentMethodTermsCode", StringComparison.OrdinalIgnoreCase)));
+                }
+            }
+        }
+    }
+
+    private void EnsureMapping(ColumnMappingCollection columnMappings, Mapping mapping, Column destinationColumn)
+    {
+        if (destinationColumn is null || mapping is null || columnMappings is null)
+            return;
+        var cm = columnMappings.FirstOrDefault(cm => cm.Active && string.Equals(cm.DestinationColumn.Name, destinationColumn.Name, StringComparison.OrdinalIgnoreCase));
+        if (cm is null)
+        {
+            mapping.AddMapping(destinationColumn, destinationColumn, false);
         }
     }
 
@@ -505,28 +540,39 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
     private void ProcessRow(Mapping mapping, ColumnMappingCollection columnMappings, Dictionary<string, object> row)
     {
-        if (mapping != null && mapping.DestinationTable != null && mapping.DestinationTable.Name == "EcomOrders" && !string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
+        if (mapping != null && mapping.DestinationTable != null && mapping.DestinationTable.Name == "EcomOrders")
         {
-            object accessUserId = DBNull.Value;
-            var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
-            if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
+            if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
             {
-                if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
+                object accessUserId = DBNull.Value;
+                var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
+                if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
                 {
-                    string externalID = Convert.ToString(row[OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name]);
-                    if (!string.IsNullOrEmpty(externalID) && ExistingUsers.ContainsKey(externalID))
+                    if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
                     {
-                        accessUserId = ExistingUsers[externalID];
+                        string externalID = Convert.ToString(row[OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name]);
+                        if (!string.IsNullOrEmpty(externalID) && ExistingUsers.ContainsKey(externalID))
+                        {
+                            accessUserId = ExistingUsers[externalID];
+                        }
                     }
                 }
+                if (!row.ContainsKey(SourceColumnNameForDestinationOrderCustomerAccessUserId))
+                {
+                    row.Add(SourceColumnNameForDestinationOrderCustomerAccessUserId, accessUserId);
+                }
+                else
+                {
+                    row[SourceColumnNameForDestinationOrderCustomerAccessUserId] = accessUserId;
+                }
             }
-            if (!row.ContainsKey(SourceColumnNameForDestinationOrderCustomerAccessUserId))
+            if (OrderShippingMethodCodeMapping is not null)
             {
-                row.Add(SourceColumnNameForDestinationOrderCustomerAccessUserId, accessUserId);
+                ProcessShipping(mapping, columnMappings, row);
             }
-            else
+            if (OrderPaymentMethodCodeMapping is not null)
             {
-                row[SourceColumnNameForDestinationOrderCustomerAccessUserId] = accessUserId;
+                ProcessPayment(mapping, columnMappings, row);
             }
         }
     }
@@ -554,6 +600,95 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                 TotalRowsAffected += writer.SqlCommand.ExecuteNonQuery();
             }
         }
+    }
+
+
+    private void ProcessShipping(Mapping mapping, ColumnMappingCollection columnMappings, Dictionary<string, object> row)
+    {
+        var code = GetValue(OrderShippingMethodCodeMapping, row);
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            var shipping = Ecommerce.Services.Shippings.GetShippings().FirstOrDefault(s => string.Equals(s.Code, code, StringComparison.OrdinalIgnoreCase));
+            if (shipping is not null)
+            {
+                row["OrderShippingMethodId"] = shipping.Id;
+                row["OrderShippingMethod"] = shipping.GetName(Ecommerce.Common.Context.LanguageID);
+                row["OrderShippingMethodDescription"] = shipping.GetDescription(Ecommerce.Common.Context.LanguageID);
+                row["OrderShippingMethodAgentCode"] = shipping.AgentCode;
+                row["OrderShippingMethodAgentServiceCode"] = shipping.AgentServiceCode;
+
+                Dictionary<string, object> shippingProviderValues = null;
+
+                var orderIdMapping = columnMappings.FirstOrDefault(cm => cm.Active && string.Equals(cm.DestinationColumn.Name, "OrderId", StringComparison.OrdinalIgnoreCase));
+                if (orderIdMapping is not null)
+                {
+                    var orderId = GetValue(orderIdMapping, row);
+                    if (!string.IsNullOrWhiteSpace(orderId))
+                    {
+                        var order = Ecommerce.Services.Orders.GetById(orderId);
+                        if (order is not null)
+                        {
+                            if (string.Equals(order.ShippingMethodId, shipping.Id, StringComparison.OrdinalIgnoreCase))
+                            {
+                                shippingProviderValues = order.ShippingProviderValues;
+                            }
+                            else
+                            {
+                                var orderShipping = Ecommerce.Services.Shippings.GetShipping(order.ShippingMethodId);
+                                if (orderShipping is not null && string.Equals(orderShipping.ServiceSystemName, shipping.ServiceSystemName))
+                                {
+                                    shippingProviderValues = order.ShippingProviderValues;
+                                }
+                            }
+                        }
+                    }
+                }
+                row["OrderShippingProviderData"] = shippingProviderValues is not null && shippingProviderValues.Count > 0 ? Converter.Serialize(shippingProviderValues) : null;
+            }
+        }
+    }
+
+    private void ProcessPayment(Mapping mapping, ColumnMappingCollection columnMappings, Dictionary<string, object> row)
+    {
+        var code = GetValue(OrderPaymentMethodCodeMapping, row);
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            var payment = Ecommerce.Services.Payments.GetPayments().FirstOrDefault(s => string.Equals(s.Code, code, StringComparison.OrdinalIgnoreCase));
+            if (payment is not null)
+            {
+                row["OrderPaymentMethodId"] = payment.Id;
+                row["OrderPaymentMethod"] = payment.GetName(Ecommerce.Common.Context.LanguageID);
+                row["OrderPaymentMethodDescription"] = payment.GetDescription(Ecommerce.Common.Context.LanguageID);
+                row["OrderPaymentMethodTermsCode"] = payment.TermsCode;
+            }
+        }
+    }
+
+    private string GetValue(ColumnMapping? columnMapping, Dictionary<string, object> row)
+    {
+        string result = null;
+        if (columnMapping != null && (columnMapping.HasScriptWithValue || row.ContainsKey(columnMapping.SourceColumn.Name)))
+        {
+            switch (columnMapping.ScriptType)
+            {
+                case ScriptType.None:
+                    result = Converter.ToString(row[columnMapping.SourceColumn.Name]);
+                    break;
+                case ScriptType.Append:
+                    result = Converter.ToString(row[columnMapping.SourceColumn.Name]) + columnMapping.ScriptValue;
+                    break;
+                case ScriptType.Prepend:
+                    result = columnMapping.ScriptValue + Converter.ToString(row[columnMapping.SourceColumn.Name]);
+                    break;
+                case ScriptType.Constant:
+                    result = columnMapping.GetScriptValue();
+                    break;
+                case ScriptType.NewGuid:
+                    result = columnMapping.GetScriptValue();
+                    break;
+            }
+        }
+        return result;
     }
 }
 
