@@ -336,7 +336,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         }
     }
 
-    internal static IEnumerable<ColumnMapping> ReplaceKeyColumnsWithAutoIdIfExists(Mapping mapping)
+    private static IEnumerable<ColumnMapping> ReplaceKeyColumnsWithAutoIdIfExists(Mapping mapping)
     {
         //will move this to MappingExtensions - US https://dev.azure.com/dynamicwebsoftware/Dynamicweb/_workitems/edit/20900
         if (mapping == null) return [];
