@@ -150,6 +150,10 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         return Schema;
     }
 
+    string ISource.GetId() => "Source|OrderProvider";
+
+    string IDestination.GetId() => "Destination|OrderProvider";
+
     public OrderProvider(XmlNode xmlNode)
     {
         foreach (XmlNode node in xmlNode.ChildNodes)
@@ -398,7 +402,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             sqlTransaction = Connection.BeginTransaction();
             foreach (OrderDestinationWriter writer in writers)
             {
-                TotalRowsAffected += writer.MoveDataToMainTable(sqlTransaction, false, false);
+                writer.MoveDataToMainTable(sqlTransaction, false, false);
             }
 
             RemoveMissingRows(writers, sqlTransaction);
