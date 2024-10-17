@@ -342,24 +342,6 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         }
     }
 
-    private static IEnumerable<ColumnMapping> ReplaceKeyColumnsWithAutoIdIfExists(Mapping mapping)
-    {
-        //will move this to MappingExtensions - US https://dev.azure.com/dynamicwebsoftware/Dynamicweb/_workitems/edit/20900
-        if (mapping == null) return [];
-
-        var autoIdDestinationColumnName = MappingExtensions.GetAutoIdColumnName(mapping.DestinationTable?.Name ?? "");
-        if (string.IsNullOrEmpty(autoIdDestinationColumnName)) return mapping.GetColumnMappings();
-
-        var columnMappings = mapping.GetColumnMappings().ToList();
-        var autoIdColumnMapping = columnMappings.Where(obj => obj.DestinationColumn.Name.Equals(autoIdDestinationColumnName, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-        if (autoIdColumnMapping != null)
-        {
-            columnMappings.ForEach(obj => obj.IsKey = false);
-            autoIdColumnMapping.IsKey = true;
-        }
-        return columnMappings;
-    }
-
     public override bool RunJob(Job job)
     {
         OrderTablesInJob(job, false);
@@ -381,7 +363,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     Logger.Log("Starting import to temporary table for " + mapping.DestinationTable.Name + ".");
                     using (var reader = job.Source.GetReader(mapping))
                     {
-                        var columnMappings = new ColumnMappingCollection(ReplaceKeyColumnsWithAutoIdIfExists(mapping));
+                        var columnMappings = new ColumnMappingCollection(MappingExtensions.ReplaceKeyColumnsWithAutoIdIfExists(mapping));
                         var writer = new OrderDestinationWriter(mapping, Connection, Logger, SkipFailingRows, DiscardDuplicates);
                         while (!reader.IsDone())
                         {
