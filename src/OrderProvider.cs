@@ -150,6 +150,10 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         return Schema;
     }
 
+    string ISource.GetId() => "Source|OrderProvider";
+
+    string IDestination.GetId() => "Destination|OrderProvider";
+
     public OrderProvider(XmlNode xmlNode)
     {
         foreach (XmlNode node in xmlNode.ChildNodes)
@@ -232,7 +236,8 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         xmlTextWriter.WriteElementString("DiscardDuplicates", DiscardDuplicates.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("RemoveMissingOrderLines", RemoveMissingOrderLines.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("SkipFailingRows", SkipFailingRows.ToString());
-        (this as ISource).GetSchema().SaveAsXml(xmlTextWriter);
+        if (!Feature.IsActive<SchemaManagementFeature>())
+            (this as ISource).GetSchema().SaveAsXml(xmlTextWriter);
     }
 
     void IDestination.SaveAsXml(XmlTextWriter xmlTextWriter)
@@ -245,7 +250,8 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         xmlTextWriter.WriteElementString("DiscardDuplicates", DiscardDuplicates.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("RemoveMissingOrderLines", RemoveMissingOrderLines.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("SkipFailingRows", SkipFailingRows.ToString());
-        (this as IDestination).GetSchema().SaveAsXml(xmlTextWriter);
+        if (!Feature.IsActive<SchemaManagementFeature>())
+            (this as IDestination).GetSchema().SaveAsXml(xmlTextWriter);
     }
 
     public override void UpdateSourceSettings(ISource source)
@@ -380,7 +386,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             sqlTransaction = Connection.BeginTransaction();
             foreach (OrderDestinationWriter writer in writers)
             {
-                TotalRowsAffected += writer.MoveDataToMainTable(sqlTransaction, false, false);
+                writer.MoveDataToMainTable(sqlTransaction, false, false);
             }
 
             RemoveMissingRows(writers, sqlTransaction);
