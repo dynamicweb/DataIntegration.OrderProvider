@@ -74,7 +74,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
         }
         protected override string GetColumns()
         {
-            string columns = GetDistinctColumnsFromMapping(new string[] { "OrderCustomerAccessUserExternalId" });
+            string columns = GetDistinctColumnsFromMapping(new string[] { "OrderCustomerAccessUserExternalId", "OrderLineCalculatedDiscountPercentage" });
             columns = columns.Substring(0, columns.Length - 2);
             switch (mapping.SourceTable.Name)
             {
@@ -84,6 +84,9 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     {
                         columns += ", [OrderId]";
                     }
+                    break;
+                case "EcomOrderLines":
+                    columns = columns + ", (-1 * OrderLineTotalDiscountWithVAT) / OrderLinePriceWithVat * 100 as [OrderLineCalculatedDiscountPercentage]";
                     break;
 
             }
