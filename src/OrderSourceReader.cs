@@ -54,7 +54,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 if (_columnMappings.Count == 0)
                     return;
 
-                string sql = "select " + GetColumns() + " from  " + GetFromTables();
+                string sql = $"SELECT * FROM (SELECT {GetColumns()} FROM {GetFromTables()}) AS innerTable ";
 
                 if (!string.IsNullOrEmpty(whereSql))
                     sql = sql + " where " + whereSql;
@@ -90,6 +90,13 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     break;
 
             }
+
+            if (mapping.Conditionals.Any())
+            {
+                columns += $", {GetColumnsFromMappingConditions()}";
+                columns = columns[..^2];
+            }
+
             return columns;
         }
 
@@ -193,7 +200,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                             if (!string.IsNullOrEmpty(ids))
                             {
                                 command.CommandText = sql + string.Format(" WHERE [OrderID] IN ('{0}')", ids);
-                                command.ExecuteNonQuery(); 
+                                command.ExecuteNonQuery();
                                 ClearOrderCache(idsCollection);
                             }
                             taken = taken + step;
@@ -202,7 +209,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     else
                     {
                         command.CommandText = sql + string.Format(" WHERE [OrderID] IN ('{0}')", string.Join("','", _ordersToExport));
-                        command.ExecuteNonQuery(); 
+                        command.ExecuteNonQuery();
                         ClearOrderCache(_ordersToExport);
                     }
                     command.Transaction.Commit();
