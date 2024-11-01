@@ -23,6 +23,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider;
 public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDestination
 {
     private const string OrderCustomerAccessUserExternalId = "OrderCustomerAccessUserExternalId";
+    private const string OrderLineCalculatedDiscountPercentage = "OrderLineCalculatedDiscountPercentage";
     private Job job = null;
     private Schema Schema { get; set; }
     private string SqlConnectionString { get; set; }
@@ -102,6 +103,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     orderLinesTable.AddColumn(new SqlColumn(column.Name, typeof(string), SqlDbType.NVarChar, orderLinesTable, -1, false, false, true));
                 }
             }
+            orderLinesTable.AddColumn(new SqlColumn(OrderLineCalculatedDiscountPercentage, typeof(double), SqlDbType.NVarChar, orderLinesTable, -1, false, false, true));
         }
 
         return result;
@@ -116,7 +118,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             if (table.Name == "EcomOrders")
             {
                 table.AddColumn(new SqlColumn(OrderCustomerAccessUserExternalId, typeof(string), SqlDbType.NVarChar, table, -1, false, false, true));
-            }
+            }            
         }
 
         return result;
