@@ -599,14 +599,14 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     /// <summary>
     /// Collection of <OrderIntegrationOrderId>, <OrderId>  key value pairs
     /// </summary>
-    private Hashtable ExistingOrders
+    private Hashtable ExistingOrdersWithOrderIntegrationOrderId
     {
         get
         {
             if (_existingOrders == null)
             {
                 _existingOrders = [];
-                SqlDataAdapter ordersDataAdapter = new("select OrderId, OrderIntegrationOrderId from EcomOrders ", Connection);
+                SqlDataAdapter ordersDataAdapter = new("SELECT OrderId, OrderIntegrationOrderId FROM EcomOrders WHERE OrderIntegrationOrderId IS NOT NULL AND OrderIntegrationOrderId <> ''", Connection);
                 _ = new SqlCommandBuilder(ordersDataAdapter);
                 DataSet dataSet = new();
                 ordersDataAdapter.Fill(dataSet);
@@ -659,7 +659,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     string integrationOrderId = Convert.ToString(value);
                     if (!string.IsNullOrEmpty(integrationOrderId))
                     {
-                        orderId = ExistingOrders.ContainsKey(integrationOrderId) ? ExistingOrders[integrationOrderId] : integrationOrderId;
+                        orderId = ExistingOrdersWithOrderIntegrationOrderId.ContainsKey(integrationOrderId) ? ExistingOrdersWithOrderIntegrationOrderId[integrationOrderId] : integrationOrderId;
                     }
                 }
             }
