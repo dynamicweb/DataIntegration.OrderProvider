@@ -8,7 +8,6 @@ using Dynamicweb.Extensibility.AddIns;
 using Dynamicweb.Extensibility.Editors;
 using Dynamicweb.Logging;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -562,20 +561,20 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         }
     }
 
-    private Hashtable _existingUsers = null;
+    private Dictionary<string, string> _existingUsers = null;
     /// <summary>
     /// Collection of <AccessUserExternalID>, <AccessUserID> key value pairs
     /// </summary>
-    private Hashtable ExistingUsers
+    private Dictionary<string, string> ExistingUsers
     {
         get
         {
             if (_existingUsers == null)
             {
-                _existingUsers = new Hashtable();
-                SqlDataAdapter usersDataAdapter = new SqlDataAdapter("select AccessUserExternalID, AccessUserID from AccessUser where AccessUserExternalID is not null and AccessUserExternalID <> ''", Connection);
+                _existingUsers = [];
+                SqlDataAdapter usersDataAdapter = new("select AccessUserExternalID, AccessUserID from AccessUser where AccessUserExternalID is not null and AccessUserExternalID <> ''", Connection);
                 new SqlCommandBuilder(usersDataAdapter);
-                DataSet dataSet = new DataSet();
+                DataSet dataSet = new();
                 usersDataAdapter.Fill(dataSet);
                 DataTable dataTable = dataSet.Tables[0];
                 if (dataTable != null)
@@ -584,10 +583,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     foreach (DataRow row in dataTable.Rows)
                     {
                         key = row["AccessUserExternalID"].ToString();
-                        if (!_existingUsers.ContainsKey(key))
-                        {
-                            _existingUsers.Add(key, row["AccessUserID"].ToString());
-                        }
+                        _existingUsers.TryAdd(key, row["AccessUserID"].ToString());
                     }
                 }
             }
@@ -595,11 +591,11 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         }
     }
 
-    private Hashtable _existingOrders = null;
+    private Dictionary<string, string> _existingOrders = null;
     /// <summary>
     /// Collection of <OrderIntegrationOrderId>, <OrderId>  key value pairs
     /// </summary>
-    private Hashtable ExistingOrdersWithOrderIntegrationOrderId
+    private Dictionary<string, string> ExistingOrdersWithOrderIntegrationOrderId
     {
         get
         {
@@ -617,10 +613,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     foreach (DataRow row in dataTable.Rows)
                     {
                         key = row["OrderIntegrationOrderId"].ToString();
-                        if (!_existingOrders.ContainsKey(key))
-                        {
-                            _existingOrders.Add(key, row["OrderId"].ToString());
-                        }
+                        _existingOrders.TryAdd(key, row["OrderId"].ToString());
                     }
                 }
             }
