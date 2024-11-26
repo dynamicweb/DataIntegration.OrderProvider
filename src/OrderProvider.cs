@@ -24,11 +24,20 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     private const string OrderCustomerAccessUserExternalId = "OrderCustomerAccessUserExternalId";
     private const string OrderLineCalculatedDiscountPercentage = "OrderLineCalculatedDiscountPercentage";
     private const string OrderIntegrationOrderId = "OrderIntegrationOrderId";
+    private const string OrderDeliveryAddressExternalId = "OrderDeliveryAddressExternalId";
+    private const string OrderDeliveryAddressLocationCode = "OrderDeliveryAddressLocationCode";
+    private const string OrderDeliveryAddressShipmentMethodCode = "OrderDeliveryAddressShipmentMethodCode";
+    private const string OrderDeliveryAddressShippingAgentCode = "OrderDeliveryAddressShippingAgentCode";
+    private const string OrderDeliveryAddressShippingAgentServiceCode = "OrderDeliveryAddressShippingAgentServiceCode";
+
     private Job job = null;
     private Schema Schema { get; set; }
     private string SqlConnectionString { get; set; }
+
     private string SourceColumnNameForDestinationOrderIntegrationOrderId = string.Empty;
     private string SourceColumnNameForDestinationOrderCustomerAccessUserId = string.Empty;
+    private string SourceColumnNameForDestinationOrderDeliveryAddressId = string.Empty;
+
     private ColumnMapping OrderShippingMethodCodeMapping = null;
     private ColumnMapping OrderPaymentMethodCodeMapping = null;
 
@@ -95,17 +104,27 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
         var orderLinesTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrderLines", StringComparison.OrdinalIgnoreCase));
         var ordersTable = result.GetTables().FirstOrDefault(obj => string.Equals(obj.Name, "EcomOrders", StringComparison.OrdinalIgnoreCase));
-        if (orderLinesTable != null && ordersTable != null)
+
+        if (ordersTable == null)
+            return result;
+
+        if (orderLinesTable != null)
         {
             foreach (var column in ordersTable.Columns)
             {
-                if (!column.Name.Equals(OrderCustomerAccessUserExternalId, StringComparison.OrdinalIgnoreCase))
+                if (!column.Name.Equals(OrderCustomerAccessUserExternalId, StringComparison.OrdinalIgnoreCase)
+                    && !column.Name.Equals(OrderDeliveryAddressExternalId, StringComparison.OrdinalIgnoreCase))
                 {
                     orderLinesTable.AddColumn(new SqlColumn(column.Name, typeof(string), SqlDbType.NVarChar, orderLinesTable, -1, false, false, true));
                 }
             }
             orderLinesTable.AddColumn(new SqlColumn(OrderLineCalculatedDiscountPercentage, typeof(double), SqlDbType.NVarChar, orderLinesTable, -1, false, false, true));
         }
+
+        ordersTable.AddColumn(new SqlColumn(OrderDeliveryAddressLocationCode, typeof(string), SqlDbType.NVarChar, ordersTable, -1, false, false, true));
+        ordersTable.AddColumn(new SqlColumn(OrderDeliveryAddressShipmentMethodCode, typeof(string), SqlDbType.NVarChar, ordersTable, -1, false, false, true));
+        ordersTable.AddColumn(new SqlColumn(OrderDeliveryAddressShippingAgentCode, typeof(string), SqlDbType.NVarChar, ordersTable, -1, false, false, true));
+        ordersTable.AddColumn(new SqlColumn(OrderDeliveryAddressShippingAgentServiceCode, typeof(string), SqlDbType.NVarChar, ordersTable, -1, false, false, true));
 
         return result;
     }
@@ -131,8 +150,16 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
     private Schema GetSqlSchemas()
     {
-        List<string> tablestToKeep = new() { "EcomOrders", "EcomOrderLines", "EcomOrderLineFields", "EcomOrderLineFieldGroupRelation" };
-        return GetSqlSourceSchema(Connection, tablestToKeep);
+        List<string> tablestToKeep = ["EcomOrders", "EcomOrderLines", "EcomOrderLineFields", "EcomOrderLineFieldGroupRelation"];
+        var result = GetSqlSourceSchema(Connection, tablestToKeep);
+        foreach (Table table in result.GetTables())
+        {
+            if (table.Name == "EcomOrders")
+            {
+                table.AddColumn(new SqlColumn(OrderDeliveryAddressExternalId, typeof(string), SqlDbType.NVarChar, table, -1, false, false, true));
+            }
+        }
+        return result;
     }
 
     public override void OverwriteSourceSchemaToOriginal()
@@ -506,6 +533,23 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                 }
             }
         }
+        if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0) != null)
+        {
+            var OrderDeliveryAddressIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderDeliveryAddressId", true) == 0);
+            if (OrderDeliveryAddressIdMapping == null)
+            {
+                var randomColumn = mapping.SourceTable.Columns.First();
+                SourceColumnNameForDestinationOrderDeliveryAddressId = randomColumn.Name;
+                mapping.AddMapping(randomColumn, mapping.DestinationTable.Columns.Find(c => string.Compare(c.Name, "OrderDeliveryAddressId", true) == 0), true);
+            }
+            else
+            {
+                if (OrderDeliveryAddressIdMapping.SourceColumn != null)
+                {
+                    SourceColumnNameForDestinationOrderDeliveryAddressId = OrderDeliveryAddressIdMapping.SourceColumn.Name;
+                }
+            }
+        }
         var ordersTable = mapping.DestinationTable;
         if (columnMappings.FirstOrDefault(cm => cm.Active && string.Equals(cm.DestinationColumn.Name, "OrderId", StringComparison.OrdinalIgnoreCase)) is not null)
         {
@@ -531,7 +575,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         }
     }
 
-    private void EnsureMapping(ColumnMappingCollection columnMappings, Mapping mapping, Column destinationColumn)
+    private static void EnsureMapping(ColumnMappingCollection columnMappings, Mapping mapping, Column destinationColumn)
     {
         if (destinationColumn is null || mapping is null || columnMappings is null)
             return;
@@ -551,13 +595,45 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         switch (mapping.DestinationTable.Name)
         {
             case "EcomOrders":
-                columnMapping.RemoveAll(cm => cm.DestinationColumn != null && string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
+                columnMapping.RemoveAll(cm => cm.DestinationColumn != null
+                && (string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0
+                    || string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0));
                 break;
             case "EcomOrderLines":
                 columnMapping.RemoveAll(cm => cm.DestinationColumn != null && string.Compare(cm.DestinationColumn.Name, OrderIntegrationOrderId, true) == 0);
                 break;
             default:
                 break;
+        }
+    }
+
+    private Dictionary<string, string> _existingAddresses = null;
+    /// <summary>
+    /// Collection of <AccessUserAddressExternalId>, <AccessUserAddressId> key value pairs
+    /// </summary>
+    private Dictionary<string, string> ExistingAddresses
+    {
+        get
+        {
+            if (_existingAddresses == null)
+            {
+                _existingAddresses = [];
+                SqlDataAdapter usersDataAdapter = new("select AccessUserAddressExternalId, AccessUserAddressId from AccessUserAddress where AccessUserAddressExternalId is not null and AccessUserAddressExternalId <> ''", Connection);
+                new SqlCommandBuilder(usersDataAdapter);
+                DataSet dataSet = new();
+                usersDataAdapter.Fill(dataSet);
+                DataTable dataTable = dataSet.Tables[0];
+                if (dataTable != null)
+                {
+                    string key;
+                    foreach (DataRow row in dataTable.Rows)
+                    {
+                        key = row["AccessUserAddressExternalId"].ToString();
+                        _existingAddresses.TryAdd(key, row["AccessUserAddressId"].ToString());
+                    }
+                }
+            }
+            return _existingAddresses;
         }
     }
 
@@ -691,6 +767,30 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             else
             {
                 row[SourceColumnNameForDestinationOrderCustomerAccessUserId] = accessUserId;
+            }
+        }
+        if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderDeliveryAddressId))
+        {
+            object addressId = DBNull.Value;
+            var OrderDeliveryAddressExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0);
+            if (OrderDeliveryAddressExternalIdMapping != null && OrderDeliveryAddressExternalIdMapping.SourceColumn != null)
+            {
+                if (row.ContainsKey(OrderDeliveryAddressExternalIdMapping.SourceColumn.Name))
+                {
+                    string externalID = Convert.ToString(row[OrderDeliveryAddressExternalIdMapping.SourceColumn.Name]);
+                    if (!string.IsNullOrEmpty(externalID) && ExistingAddresses.ContainsKey(externalID))
+                    {
+                        addressId = ExistingAddresses[externalID];
+                    }
+                }
+            }
+            if (!row.ContainsKey(SourceColumnNameForDestinationOrderDeliveryAddressId))
+            {
+                row.Add(SourceColumnNameForDestinationOrderDeliveryAddressId, addressId);
+            }
+            else
+            {
+                row[SourceColumnNameForDestinationOrderDeliveryAddressId] = addressId;
             }
         }
         if (OrderShippingMethodCodeMapping is not null)
