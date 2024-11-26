@@ -86,7 +86,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     }
                     break;
                 case "EcomOrderLines":
-                    columns = columns + ", (-1 * OrderLineTotalDiscountWithVAT) / OrderLinePriceWithVat * 100 as [OrderLineCalculatedDiscountPercentage]";
+                    columns = columns + ", (-1 * OrderLineTotalDiscountWithVAT) / NULLIF(OrderLinePriceWithVat, 0) * 100 as [OrderLineCalculatedDiscountPercentage]";
                     break;
 
             }
