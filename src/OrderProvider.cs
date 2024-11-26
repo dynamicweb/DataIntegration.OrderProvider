@@ -60,11 +60,18 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         set { connection = value; }
     }
 
+    private void InitTableRelations()
+    {
+        TableRelations.Clear();
+        TableRelations.Add("EcomOrderLines", ["EcomOrders"]);
+    }
+
     public OrderProvider(string connectionString)
     {
         SqlConnectionString = connectionString;
         Connection = new SqlConnection(connectionString);
         DiscardDuplicates = false;
+        InitTableRelations();
     }
 
     public override void LoadSettings(Job job)
@@ -163,6 +170,8 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
     public OrderProvider(XmlNode xmlNode)
     {
+        InitTableRelations();
+
         foreach (XmlNode node in xmlNode.ChildNodes)
         {
             switch (node.Name)
@@ -304,38 +313,9 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     public override ISourceReader GetReader(Mapping mapping)
     {
         return new OrderSourceReader(mapping, Connection, ExportNotExportedOrders, ExportOnlyOrdersWithoutExtID, DoNotExportCarts);
-    }
+    }    
 
-    public override void OrderTablesInJob(Job job, bool isSourceLookup)
-    {
-        MappingCollection tables = new MappingCollection();
-
-        var mappings = GetMappingsByName(job.Mappings, "EcomOrders", isSourceLookup);
-        if (mappings != null)
-        {
-            tables.AddRange(mappings);
-        }
-
-        mappings = GetMappingsByName(job.Mappings, "EcomOrderLines", isSourceLookup);
-        if (mappings != null)
-        {
-            tables.AddRange(mappings);
-        }
-
-        mappings = GetMappingsByName(job.Mappings, "EcomOrderLineFields", isSourceLookup);
-        if (mappings != null)
-        {
-            tables.AddRange(mappings);
-        }
-
-        mappings = GetMappingsByName(job.Mappings, "EcomOrderLineFieldGroupRelation", isSourceLookup);
-        if (mappings != null)
-        {
-            tables.AddRange(mappings);
-        }
-
-        job.Mappings = tables;
-    }
+    public override void OrderTablesInJob(Job job, bool isSource) => OrderTablesByRelations(job, isSource);    
 
     internal static List<Mapping> GetMappingsByName(MappingCollection collection, string name, bool isSourceLookup)
     {
