@@ -606,7 +606,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             if (_existingAddresses == null)
             {
                 _existingAddresses = [];
-                SqlDataAdapter usersDataAdapter = new("select AccessUserAddressExternalId, AccessUserAddressId from AccessUserAddress where AccessUserAddressExternalId is not null and AccessUserAddressExternalId <> ''", Connection);
+                SqlDataAdapter usersDataAdapter = new("select AccessUserAddressExternalId, AccessUserAddressId from AccessUserAddress where IsNull(AccessUserAddressExternalId, '') <> ''", Connection);
                 new SqlCommandBuilder(usersDataAdapter);
                 DataSet dataSet = new();
                 usersDataAdapter.Fill(dataSet);
@@ -636,7 +636,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             if (_existingUsers == null)
             {
                 _existingUsers = [];
-                SqlDataAdapter usersDataAdapter = new("select AccessUserExternalID, AccessUserID from AccessUser where AccessUserExternalID is not null and AccessUserExternalID <> ''", Connection);
+                SqlDataAdapter usersDataAdapter = new("select AccessUserExternalID, AccessUserID from AccessUser where IsNull(AccessUserExternalID, '') <> ''", Connection);
                 new SqlCommandBuilder(usersDataAdapter);
                 DataSet dataSet = new();
                 usersDataAdapter.Fill(dataSet);
