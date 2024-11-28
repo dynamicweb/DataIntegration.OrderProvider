@@ -65,7 +65,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     private SqlConnection connection;
     private SqlConnection Connection
     {
-        get { return connection ?? (connection = (SqlConnection)Database.CreateConnection()); }
+        get { return connection ??= (SqlConnection)Database.CreateConnection(); }
         set { connection = value; }
     }
 
@@ -318,8 +318,8 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
     public override string Serialize()
     {
-        XDocument document = new XDocument(new XDeclaration("1.0", "utf-8", string.Empty));
-        XElement root = new XElement("Parameters");
+        XDocument document = new(new XDeclaration("1.0", "utf-8", string.Empty));
+        XElement root = new("Parameters");
         root.Add(CreateParameterNode(GetType(), "Export not yet exported Orders", ExportNotExportedOrders.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Only export orders without externalID", ExportOnlyOrdersWithoutExtID.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Export completed orders only", DoNotExportCarts.ToString(CultureInfo.CurrentCulture)));
@@ -419,8 +419,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                 msg += GetFailedSourceRowMessage(sourceRow);
 
             Logger.Log("Import job failed: " + msg);
-            if (sqlTransaction != null)
-                sqlTransaction.Rollback();
+            sqlTransaction?.Rollback();
 
             TotalRowsAffected = 0;
 
@@ -708,15 +707,11 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     string integrationOrderId = Convert.ToString(value);
                     if (!string.IsNullOrEmpty(integrationOrderId))
                     {
-                        orderId = ExistingOrdersWithOrderIntegrationOrderId.ContainsKey(integrationOrderId) ? ExistingOrdersWithOrderIntegrationOrderId[integrationOrderId] : integrationOrderId;
+                        orderId = ExistingOrdersWithOrderIntegrationOrderId.TryGetValue(integrationOrderId, out string existingIntegrationOrderId) ? existingIntegrationOrderId : integrationOrderId;
                     }
                 }
             }
-            if (!row.ContainsKey(SourceColumnNameForDestinationOrderIntegrationOrderId))
-            {
-                row.Add(SourceColumnNameForDestinationOrderIntegrationOrderId, orderId);
-            }
-            else
+            if (!row.TryAdd(SourceColumnNameForDestinationOrderIntegrationOrderId, orderId))
             {
                 row[SourceColumnNameForDestinationOrderIntegrationOrderId] = orderId;
             }
@@ -748,17 +743,13 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                 if (row.ContainsKey(OrderDeliveryAddressExternalIdMapping.SourceColumn.Name))
                 {
                     string externalID = Convert.ToString(row[OrderDeliveryAddressExternalIdMapping.SourceColumn.Name]);
-                    if (!string.IsNullOrEmpty(externalID) && ExistingAddresses.ContainsKey(externalID))
+                    if (!string.IsNullOrEmpty(externalID) && ExistingAddresses.TryGetValue(externalID, out string value))
                     {
-                        addressId = ExistingAddresses[externalID];
+                        addressId = value;
                     }
                 }
             }
-            if (!row.ContainsKey(SourceColumnNameForDestinationOrderDeliveryAddressId))
-            {
-                row.Add(SourceColumnNameForDestinationOrderDeliveryAddressId, addressId);
-            }
-            else
+            if (!row.TryAdd(SourceColumnNameForDestinationOrderDeliveryAddressId, addressId))
             {
                 row[SourceColumnNameForDestinationOrderDeliveryAddressId] = addressId;
             }
@@ -776,17 +767,13 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                 if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
                 {
                     string externalID = Convert.ToString(row[OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name]);
-                    if (!string.IsNullOrEmpty(externalID) && ExistingUsers.ContainsKey(externalID))
+                    if (!string.IsNullOrEmpty(externalID) && ExistingUsers.TryGetValue(externalID, out string value))
                     {
-                        accessUserId = ExistingUsers[externalID];
+                        accessUserId = value;
                     }
                 }
             }
-            if (!row.ContainsKey(SourceColumnNameForDestinationOrderCustomerAccessUserId))
-            {
-                row.Add(SourceColumnNameForDestinationOrderCustomerAccessUserId, accessUserId);
-            }
-            else
+            if (!row.TryAdd(SourceColumnNameForDestinationOrderCustomerAccessUserId, accessUserId))
             {
                 row[SourceColumnNameForDestinationOrderCustomerAccessUserId] = accessUserId;
             }

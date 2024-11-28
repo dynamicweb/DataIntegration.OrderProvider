@@ -82,7 +82,7 @@ internal class OrderSourceReader : BaseSqlReader
     {
         string columns = GetDistinctColumnsFromMapping(["OrderCustomerAccessUserExternalId", "OrderDeliveryAddressExternalId", "OrderDeliveryAddressLocationCode",
             "OrderDeliveryAddressShipmentMethodCode", "OrderDeliveryAddressShippingAgentCode", "OrderDeliveryAddressShippingAgentServiceCode", "OrderLineCalculatedDiscountPercentage"]);
-        columns = columns.Substring(0, columns.Length - 2);
+        columns = columns[..^2];
         switch (mapping.SourceTable.Name)
         {
             case "EcomOrders":
@@ -95,7 +95,7 @@ internal class OrderSourceReader : BaseSqlReader
                 }
                 break;
             case "EcomOrderLines":
-                columns = columns + ", (-1 * OrderLineTotalDiscountWithVAT) / NULLIF(OrderLinePriceWithVat, 0) * 100 as [OrderLineCalculatedDiscountPercentage]";
+                columns += ", (-1 * OrderLineTotalDiscountWithVAT) / NULLIF(OrderLinePriceWithVat, 0) * 100 as [OrderLineCalculatedDiscountPercentage]";
                 break;
 
         }
@@ -111,11 +111,11 @@ internal class OrderSourceReader : BaseSqlReader
 
     private string GetWhereSql(bool exportNotExportedOrders, bool exportOnlyOrdersWithoutExtID, bool doNotExportCarts)
     {
-        List<SqlParameter> parameters = new List<SqlParameter>();
+        List<SqlParameter> parameters = [];
         string conditionalsSql = MappingExtensions.GetConditionalsSql(out parameters, mapping.Conditionals, false, false);
         if (conditionalsSql != "")
         {
-            conditionalsSql = conditionalsSql.Substring(0, conditionalsSql.Length - 4);
+            conditionalsSql = conditionalsSql[..^4];
             foreach (SqlParameter p in parameters)
                 _command.Parameters.Add(p);
         }
@@ -147,7 +147,7 @@ internal class OrderSourceReader : BaseSqlReader
         switch (mapping.SourceTable.Name)
         {
             case "EcomOrderLines":
-                result = result + " inner join EcomOrders on EcomOrderLines.OrderLineOrderID = EcomOrders.OrderID";
+                result += " inner join EcomOrders on EcomOrderLines.OrderLineOrderID = EcomOrders.OrderID";
                 break;
             case "EcomOrders":
                 result = "[dbo].[EcomOrders] left join dbo.AccessUser on OrderCustomerAccessUserID = AccessUserID left join dbo.AccessUserAddress on OrderDeliveryAddressId = AccessUserAddressId";
@@ -196,7 +196,7 @@ internal class OrderSourceReader : BaseSqlReader
 
                 if (!string.IsNullOrEmpty(orderStateIDAfterExport))
                 {
-                    sql = sql + string.Format(", OrderStateID = '{0}'", orderStateIDAfterExport);
+                    sql += string.Format(", OrderStateID = '{0}'", orderStateIDAfterExport);
                 }
                 if (_ordersToExport.Count > 100)
                 {
@@ -212,7 +212,7 @@ internal class OrderSourceReader : BaseSqlReader
                             command.ExecuteNonQuery();
                             ClearOrderCache(idsCollection);
                         }
-                        taken = taken + step;
+                        taken += step;
                     }
                 }
                 else

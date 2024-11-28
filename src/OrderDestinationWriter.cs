@@ -38,9 +38,11 @@ internal class OrderDestinationWriter : BaseSqlWriter
         SkipFailingRows = skipFailingRows;
         DiscardDuplicates = discardDuplicates;
         TempTablePrefix = $"TempTableForBulkImport{mapping.GetId()}";
-        SqlBulkCopier = new SqlBulkCopy(connection);
-        SqlBulkCopier.DestinationTableName = mapping.DestinationTable.Name + TempTablePrefix;
-        SqlBulkCopier.BulkCopyTimeout = 0;
+        SqlBulkCopier = new SqlBulkCopy(connection)
+        {
+            DestinationTableName = mapping.DestinationTable.Name + TempTablePrefix,
+            BulkCopyTimeout = 0
+        };
         Initialize();
         if (connection.State != ConnectionState.Open)
             connection.Open();
@@ -48,7 +50,7 @@ internal class OrderDestinationWriter : BaseSqlWriter
 
     public new void Initialize()
     {
-        List<SqlColumn> destColumns = new();
+        List<SqlColumn> destColumns = [];
         var columnMappings = Mapping.GetColumnMappings();
         foreach (ColumnMapping columnMapping in columnMappings.DistinctBy(obj => obj.DestinationColumn.Name))
         {
@@ -112,9 +114,9 @@ internal class OrderDestinationWriter : BaseSqlWriter
             // if 10k write table to db, empty table
             if (TableToWrite.Rows.Count >= 1000)
             {
-                RowsToWriteCount = RowsToWriteCount + TableToWrite.Rows.Count;
+                RowsToWriteCount += TableToWrite.Rows.Count;
                 SkippedFailedRowsCount = SqlBulkCopierWriteToServer(SqlBulkCopier, TableToWrite, SkipFailingRows, Mapping, Logger);
-                RowsToWriteCount = RowsToWriteCount - SkippedFailedRowsCount;
+                RowsToWriteCount -= SkippedFailedRowsCount;
                 TableToWrite.Clear();
                 if (RowsToWriteCount >= LastLogRowsCount + 10000)
                 {
@@ -131,9 +133,6 @@ internal class OrderDestinationWriter : BaseSqlWriter
         SqlCommand.CommandText = "if exists (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'" + text + "') AND type in (N'U')) drop table " + text;
         SqlCommand.ExecuteNonQuery();
         ((IDisposable)SqlBulkCopier).Dispose();
-        if (duplicateRowsHandler != null)
-        {
-            duplicateRowsHandler.Dispose();
-        }
+        duplicateRowsHandler?.Dispose();
     }
 }
