@@ -77,6 +77,7 @@ internal class OrderSourceReader : BaseSqlReader
             throw new Exception("Failed to open sqlSourceReader. Reason: " + ex.Message, ex);
         }
     }
+
     protected override string GetColumns()
     {
         string columns = GetDistinctColumnsFromMapping(["OrderCustomerAccessUserExternalId", "OrderDeliveryAddressExternalId", "OrderDeliveryAddressLocationCode",
