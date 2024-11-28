@@ -498,8 +498,8 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         var columnMappings = mapping.GetColumnMappings();
         if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0) != null)
         {
-            var OrderCustomerAccessUserIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
-            if (OrderCustomerAccessUserIdMapping == null)
+            var orderCustomerAccessUserIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderCustomerAccessUserId", true) == 0);
+            if (orderCustomerAccessUserIdMapping == null)
             {
                 var randomColumn = mapping.SourceTable.Columns.First();
                 SourceColumnNameForDestinationOrderCustomerAccessUserId = randomColumn.Name;
@@ -507,16 +507,16 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             }
             else
             {
-                if (OrderCustomerAccessUserIdMapping.SourceColumn != null)
+                if (orderCustomerAccessUserIdMapping.SourceColumn != null)
                 {
-                    SourceColumnNameForDestinationOrderCustomerAccessUserId = OrderCustomerAccessUserIdMapping.SourceColumn.Name;
+                    SourceColumnNameForDestinationOrderCustomerAccessUserId = orderCustomerAccessUserIdMapping.SourceColumn.Name;
                 }
             }
         }
         if (columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0) != null)
         {
-            var OrderDeliveryAddressIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderDeliveryAddressId", true) == 0);
-            if (OrderDeliveryAddressIdMapping == null)
+            var orderDeliveryAddressIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, "OrderDeliveryAddressId", true) == 0);
+            if (orderDeliveryAddressIdMapping == null)
             {
                 var randomColumn = mapping.SourceTable.Columns.First();
                 SourceColumnNameForDestinationOrderDeliveryAddressId = randomColumn.Name;
@@ -524,9 +524,9 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             }
             else
             {
-                if (OrderDeliveryAddressIdMapping.SourceColumn != null)
+                if (orderDeliveryAddressIdMapping.SourceColumn != null)
                 {
-                    SourceColumnNameForDestinationOrderDeliveryAddressId = OrderDeliveryAddressIdMapping.SourceColumn.Name;
+                    SourceColumnNameForDestinationOrderDeliveryAddressId = orderDeliveryAddressIdMapping.SourceColumn.Name;
                 }
             }
         }
@@ -725,30 +725,20 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
     private void ProcessOrderRow(Mapping mapping, ColumnMappingCollection columnMappings, Dictionary<string, object> row)
     {
-        if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
+        ProcessOrderCustomerAccessUser(columnMappings, row);
+        ProcessOrderDeliveryAddress(columnMappings, row);
+        if (OrderShippingMethodCodeMapping is not null)
         {
-            object accessUserId = DBNull.Value;
-            var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
-            if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
-            {
-                if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
-                {
-                    string externalID = Convert.ToString(row[OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name]);
-                    if (!string.IsNullOrEmpty(externalID) && ExistingUsers.ContainsKey(externalID))
-                    {
-                        accessUserId = ExistingUsers[externalID];
-                    }
-                }
-            }
-            if (!row.ContainsKey(SourceColumnNameForDestinationOrderCustomerAccessUserId))
-            {
-                row.Add(SourceColumnNameForDestinationOrderCustomerAccessUserId, accessUserId);
-            }
-            else
-            {
-                row[SourceColumnNameForDestinationOrderCustomerAccessUserId] = accessUserId;
-            }
+            ProcessShipping(mapping, columnMappings, row);
         }
+        if (OrderPaymentMethodCodeMapping is not null)
+        {
+            ProcessPayment(mapping, columnMappings, row);
+        }
+    }
+
+    private void ProcessOrderDeliveryAddress(ColumnMappingCollection columnMappings, Dictionary<string, object> row)
+    {
         if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderDeliveryAddressId))
         {
             object addressId = DBNull.Value;
@@ -773,13 +763,33 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                 row[SourceColumnNameForDestinationOrderDeliveryAddressId] = addressId;
             }
         }
-        if (OrderShippingMethodCodeMapping is not null)
+    }
+
+    private void ProcessOrderCustomerAccessUser(ColumnMappingCollection columnMappings, Dictionary<string, object> row)
+    {
+        if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
         {
-            ProcessShipping(mapping, columnMappings, row);
-        }
-        if (OrderPaymentMethodCodeMapping is not null)
-        {
-            ProcessPayment(mapping, columnMappings, row);
+            object accessUserId = DBNull.Value;
+            var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
+            if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
+            {
+                if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
+                {
+                    string externalID = Convert.ToString(row[OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name]);
+                    if (!string.IsNullOrEmpty(externalID) && ExistingUsers.ContainsKey(externalID))
+                    {
+                        accessUserId = ExistingUsers[externalID];
+                    }
+                }
+            }
+            if (!row.ContainsKey(SourceColumnNameForDestinationOrderCustomerAccessUserId))
+            {
+                row.Add(SourceColumnNameForDestinationOrderCustomerAccessUserId, accessUserId);
+            }
+            else
+            {
+                row[SourceColumnNameForDestinationOrderCustomerAccessUserId] = accessUserId;
+            }
         }
     }
 
