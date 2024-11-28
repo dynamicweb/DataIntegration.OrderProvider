@@ -380,7 +380,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     using (var reader = job.Source.GetReader(mapping))
                     {
                         var columnMappings = new ColumnMappingCollection(MappingExtensions.ReplaceKeyColumnsWithAutoIdIfExists(mapping));
-                        FindColumnMappings(columnMappings);
+                        FindColumnMappings(mapping, columnMappings);
                         var writer = new OrderDestinationWriter(mapping, Connection, Logger, SkipFailingRows, DiscardDuplicates);
                         while (!reader.IsDone())
                         {
@@ -441,10 +441,17 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
         return true;
     }
 
-    private void FindColumnMappings(ColumnMappingCollection columnMappings)
+    private void FindColumnMappings(Mapping mapping, ColumnMappingCollection columnMappings)
     {
-        OrderDeliveryAddressExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0); 
-        OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
+        switch (mapping.DestinationTable.Name)
+        {
+            case "EcomOrders":
+                OrderDeliveryAddressExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0);
+                OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
+                break;
+            default:
+                break;
+        }
     }
 
     IEnumerable<ParameterOption> IParameterOptions.GetParameterOptions(string parameterName)
