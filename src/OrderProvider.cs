@@ -40,6 +40,8 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
 
     private ColumnMapping OrderShippingMethodCodeMapping = null;
     private ColumnMapping OrderPaymentMethodCodeMapping = null;
+    private ColumnMapping OrderDeliveryAddressExternalIdMapping = null;
+    private ColumnMapping OrderCustomerAccessUserExternalIdMapping = null;
 
     [AddInParameter("Export not yet exported Orders"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
     public virtual bool ExportNotExportedOrders { get; set; }
@@ -378,6 +380,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
                     using (var reader = job.Source.GetReader(mapping))
                     {
                         var columnMappings = new ColumnMappingCollection(MappingExtensions.ReplaceKeyColumnsWithAutoIdIfExists(mapping));
+                        FindColumnMappings(columnMappings);
                         var writer = new OrderDestinationWriter(mapping, Connection, Logger, SkipFailingRows, DiscardDuplicates);
                         while (!reader.IsDone())
                         {
@@ -436,6 +439,12 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
             sourceRow = null;
         }
         return true;
+    }
+
+    private void FindColumnMappings(ColumnMappingCollection columnMappings)
+    {
+        OrderDeliveryAddressExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0); 
+        OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
     }
 
     IEnumerable<ParameterOption> IParameterOptions.GetParameterOptions(string parameterName)
@@ -736,8 +745,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     {
         if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderDeliveryAddressId))
         {
-            object addressId = DBNull.Value;
-            var OrderDeliveryAddressExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderDeliveryAddressExternalId, true) == 0);
+            object addressId = DBNull.Value;            
             if (OrderDeliveryAddressExternalIdMapping != null && OrderDeliveryAddressExternalIdMapping.SourceColumn != null)
             {
                 if (row.ContainsKey(OrderDeliveryAddressExternalIdMapping.SourceColumn.Name))
@@ -760,8 +768,7 @@ public class OrderProvider : BaseSqlProvider, IParameterOptions, ISource, IDesti
     {
         if (!string.IsNullOrEmpty(SourceColumnNameForDestinationOrderCustomerAccessUserId))
         {
-            object accessUserId = DBNull.Value;
-            var OrderCustomerAccessUserExternalIdMapping = columnMappings.Find(cm => string.Compare(cm.DestinationColumn.Name, OrderCustomerAccessUserExternalId, true) == 0);
+            object accessUserId = DBNull.Value;            
             if (OrderCustomerAccessUserExternalIdMapping != null && OrderCustomerAccessUserExternalIdMapping.SourceColumn != null)
             {
                 if (row.ContainsKey(OrderCustomerAccessUserExternalIdMapping.SourceColumn.Name))
