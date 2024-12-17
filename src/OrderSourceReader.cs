@@ -54,7 +54,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 if (_columnMappings.Count == 0)
                     return;
 
-                string sql = $"SELECT * FROM (SELECT {GetColumns()} FROM {GetFromTables()}) AS innerTable ";
+                string sql = $"SELECT {GetColumns()} FROM {GetFromTables()} ";
 
                 if (!string.IsNullOrEmpty(whereSql))
                     sql = sql + " where " + whereSql;
@@ -178,10 +178,10 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 SqlCommand command = new SqlCommand { Connection = connection };
                 try
                 {
-                    command.Transaction = connection.BeginTransaction("OrderProviderTransaction");
-
                     if (connection.State.ToString() != "Open")
                         connection.Open();
+
+                    command.Transaction = connection.BeginTransaction("OrderProviderTransaction");                    
 
                     string sql = "UPDATE EcomOrders SET OrderIsExported = 1";
 
@@ -216,7 +216,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 }
                 catch (Exception ex)
                 {
-                    command.Transaction.Rollback();
+                    command?.Transaction?.Rollback();
                     throw new Exception(string.Format("A rollback is made as exception is made with message: {0} Sql query: {1}", ex.Message, command.CommandText), ex);
                 }
                 finally
