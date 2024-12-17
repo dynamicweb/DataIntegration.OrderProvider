@@ -54,7 +54,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 if (_columnMappings.Count == 0)
                     return;
 
-                string sql = $"SELECT {GetColumns()} FROM {GetFromTables()} ";
+                string sql = $"SELECT * FROM (SELECT {GetColumns()} FROM {GetFromTables()}) AS innerTable";
 
                 if (!string.IsNullOrEmpty(whereSql))
                     sql = sql + " where " + whereSql;
@@ -72,6 +72,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                 throw new Exception("Failed to open sqlSourceReader. Reason: " + ex.Message, ex);
             }
         }
+
         protected override string GetColumns()
         {
             string columns = GetDistinctColumnsFromMapping(new string[] { "OrderCustomerAccessUserExternalId", "OrderLineCalculatedDiscountPercentage" });
@@ -80,7 +81,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
             {
                 case "EcomOrders":
                     columns = columns + ", [AccessUserExternalId] as [OrderCustomerAccessUserExternalId]";
-                    if (!columns.Split(',').Any(c => c.Trim(new char[] { ' ', '[', ']' }).Equals("OrderId", StringComparison.OrdinalIgnoreCase)))
+                    if (!columns.Split(',').Any(c => c.Trim([' ', '[', ']']).Equals("OrderId", StringComparison.OrdinalIgnoreCase)))
                     {
                         columns += ", [OrderId]";
                     }
@@ -91,10 +92,30 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
 
             }
 
+            string[] standardConditionColumns = ["OrderIsExported", "OrderIntegrationOrderId", "OrderCart", "OrderComplete"];
+
             if (mapping.Conditionals.Any())
             {
-                columns += $", {GetColumnsFromMappingConditions()}";
-                columns = columns[..^2];
+                var columnsToSkip = columns.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Union(standardConditionColumns)
+                    .Union(["OrderCustomerAccessUserExternalId", "OrderLineCalculatedDiscountPercentage"])
+                    .Select(c => c.Trim([' ', '[', ']']));
+                var conditionColumns = GetColumnsFromMappingConditions(columnsToSkip.ToArray());
+                if (!string.IsNullOrEmpty(conditionColumns))
+                {
+                    columns += $", {conditionColumns}";
+                    columns = columns[..^2];
+                }
+            }
+
+            // Add Order source provider standard conditional columns
+            var splittedColumns = columns.Split(',');
+            foreach (var column in standardConditionColumns)
+            {
+                if (!splittedColumns.Any(c => c.Trim(new char[] { ' ', '[', ']' }).Equals(column, StringComparison.OrdinalIgnoreCase)))
+                {
+                    columns += $", [{column}]";
+                }
             }
 
             return columns;
@@ -181,7 +202,7 @@ namespace Dynamicweb.DataIntegration.Providers.OrderProvider
                     if (connection.State.ToString() != "Open")
                         connection.Open();
 
-                    command.Transaction = connection.BeginTransaction("OrderProviderTransaction");                    
+                    command.Transaction = connection.BeginTransaction("OrderProviderTransaction");
 
                     string sql = "UPDATE EcomOrders SET OrderIsExported = 1";
 
